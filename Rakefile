@@ -1,3 +1,4 @@
+
 require 'rake'
 
 require 'spec/rake/spectask'
@@ -64,9 +65,8 @@ namespace :mongodb do
 end
 
 desc "rspec tests"
-Spec::Rake::SpecTask.new('spec') do |t|
-  t.spec_files = FileList['spec/**/*.rb']
-  t.spec_opts = %w(-fs --color)
+task :spec do
+  exec "bundle exec spec spec/*.rb -b -fs -color"
 end
 
 desc "run specs against mongodb"
