@@ -19,50 +19,28 @@ module EMMongo
     end
 
     def first(selector={}, opts={}, &blk)
-      skip  = opts.delete(:skip) || 0
-      limit = 1
-      @connection.find(@name, skip, limit, selector, &blk)
+      opts[:limit] = 1
+      find(selector, opts) do |res|
+        yield res.first
+      end
     end
 
-    def insert(obj, &blk)
+    def insert(obj)
       obj[:_id] ||= EMMongo::Util.unique_id 
       @connection.insert(@name, obj)
-      if block_given?
-        EM.next_tick do
-          yield obj
-        end
-      end
       obj
     end
 
-    def remove(obj = {}, &blk)
+    def remove(obj = {})
       @connection.delete(@name, obj)
-      if block_given?
-        EM.next_tick do
-          yield true
-        end
-      end
       true
     end
 
-#    def index obj
-#      obj = { obj => true } if obj.is_a? Symbol
-#
-#      indexes.insert({ :name => obj.keys.map{|o| o.to_s }.sort.join('_'),
-#                       :ns => @ns,
-#                       :key => obj }, false)
-#    end
-
-#    def indexes obj = {}, &blk
-#      @indexes ||= self.class.new("#{@ns.split('.').first}.system.indexes")
-#      blk ? @indexes.find(obj.merge(:ns => @ns), &blk) : @indexes
-#    end
-
-    def method_missing meth
-      puts meth
-      raise ArgumentError, 'collection cannot take block' if block_given?
-      (@subns ||= {})[meth] ||= self.class.new("#{@ns}.#{meth}", @client)
-    end
+    #def method_missing meth
+    #  puts meth
+    #  raise ArgumentError, 'collection cannot take block' if block_given?
+    #  (@subns ||= {})[meth] ||= self.class.new("#{@ns}.#{meth}", @client)
+    #end
 
   end
 end

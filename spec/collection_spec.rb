@@ -3,7 +3,18 @@ require File.dirname(__FILE__) + '/spec_helper.rb'
 describe EMMongo::Collection do
   include EM::SpecHelper
 
-  before(:each) do
+  before(:all) do
+    @numbers = { 
+      1 => 'one',
+      2 => 'two',
+      3 => 'three',
+      4 => 'four',
+      5 => 'five',
+      6 => 'six',
+      7 => 'seven',
+      8 => 'eight',
+      9 => 'nine'
+    }
   end
 
   after(:all) do
@@ -21,12 +32,11 @@ describe EMMongo::Collection do
 
   it 'should find an object' do
     EM::Spec::Mongo.collection do |collection|
-      collection.insert(:hello => 'world') do
-        r = collection.find({:hello => "world"},{}) do |res|
-          res.size.should >= 1
-          res[0][:hello].should == "world"
-          EM::Spec::Mongo.close
-        end
+      collection.insert(:hello => 'world') 
+      r = collection.find({:hello => "world"},{}) do |res|
+        res.size.should >= 1
+        res[0][:hello].should == "world"
+        EM::Spec::Mongo.close
       end
     end
   end
@@ -85,20 +95,46 @@ describe EMMongo::Collection do
     end
   end
 
-  xit 'should find an object using nested properties' do
-    EM::Spec::Mongo.connect do |m|
-      coll = m.collection
-      
-      coll.insert({
+  it 'should find an object using nested properties' do
+    EM::Spec::Mongo.collection do |collection|
+      collection.insert({
         :name => 'Google',
         :address => {
           :city => 'Mountain View',
           :state => 'California'}
       })
 
-      coll.first('address.city' => 'Mountain View') do |res|
-        STDERR.puts res.inspect
+      collection.first('address.city' => 'Mountain View') do |res|
         res[:name].should == 'Google'
+        EM::Spec::Mongo.close
+      end
+    end
+  end
+
+  it 'should find objects with specific values' do
+    EM::Spec::Mongo.collection do |collection|
+      @numbers.each do |num, word|
+        collection.insert(:num => num, :word => word)
+      end
+
+      collection.find({:num => {'$in' => [1,3,5]}}) do |res|
+        res.size.should == 3
+        res.map{|r| r[:num] }.sort.should == [1,3,5]
+        EM::Spec::Mongo.close
+      end
+    end
+  end
+
+  it 'should find objects greater than something' do
+    EM::Spec::Mongo.collection do |collection|
+      @numbers.each do |num, word|
+        collection.insert(:num => num, :word => word)
+      end
+
+      collection.find({:num => {'$gt' => 3}}) do |res|
+        res.size.should == 6
+        res.map{|r| r[:num] }.sort.should == [4,5,6,7,8,9]
+        EM::Spec::Mongo.close
       end
     end
   end

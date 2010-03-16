@@ -35,8 +35,9 @@ module EM
 
       def self.connection
         em do
+          connection = EMMongo::Connection.new
           EM.next_tick do
-            yield EMMongo::Connection.new 
+            yield connection
           end
         end
       end

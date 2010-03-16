@@ -79,6 +79,7 @@ module EMMongo
                               &blk)
     end
 
+
     # EM hooks
     def initialize(options={})
       @request_id = 0
@@ -205,6 +206,10 @@ module EMMongo
 
     def close
       @em_connection.close
+    end
+
+    def connected?
+      @em_connection.connected?
     end
 
   end
