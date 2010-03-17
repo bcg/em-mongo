@@ -110,23 +110,18 @@ module EMMongo
     end
 
     def receive_data data
-      log 'receive_data', data
+      log "receive_data: #{data.size}"#, data
+
       @buf << data
 
       until @buf.empty?
-        # packet size
-        size = @buf.read(:int)
+        size = @buf._peek(0, 4, 'I')
 
-        # XXX put size back into the buffer!!
         break unless @buf.size >= size-4
 
-        # header
-        id, response, operation = @buf.read(:int, :int, :int)
-
-        # body
+        size, id, response, operation = @buf.read(:int, :int, :int, :int)
         reserved, cursor, start, num = @buf.read(:int, :longlong, :int, :int)
 
-        # bson results
         results = (1..num).map do
           @buf.read(:bson)
         end
@@ -134,14 +129,12 @@ module EMMongo
         if cb = @responses.delete(response)
           cb.call(results)
         end
-
-        # close if no more responses pending
         close_connection if @close_pending and @responses.size == 0
       end
     end
 
     def send_data data
-      log 'send_data', data
+      log "send_data:#{data.size}"#, data
       super data
     end
 

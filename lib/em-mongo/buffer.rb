@@ -248,6 +248,13 @@ module EMMongo
       self
     end
 
+    def _peek(pos, size, pack)
+      data = @data[pos,size]
+      data = data.unpack(pack)
+      data = data.pop if data.size == 1
+      data
+    end
+
     def _read size, pack = nil
       if @pos + size > length
         raise Overflow
