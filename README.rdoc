@@ -23,6 +23,7 @@ with mongo-ruby-driver as possible.
 
 1. collection.index()
 2. more collection.find() unit tests
+3. put a gem up
 
 == Credit
 
@@ -31,10 +32,10 @@ with mongo-ruby-driver as possible.
 
 == References
 
-Rmongo: http://github.com/tmm1/rmongo
-EM-Mongo: http://github.com/bcg/em-mongo
-mongo-ruby-driver: http://github.com/mongodb/mongo-ruby-driver
-Mongo Wire Protocol: http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol
+* Rmongo: http://github.com/tmm1/rmongo
+* EM-Mongo: http://github.com/bcg/em-mongo
+* mongo-ruby-driver: http://github.com/mongodb/mongo-ruby-driver
+* Mongo Wire Protocol: http://www.mongodb.org/display/DOCS/Mongo+Wire+Protocol
 
 == License
 
