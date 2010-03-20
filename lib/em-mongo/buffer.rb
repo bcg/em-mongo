@@ -8,7 +8,7 @@ else
   require 'enumerator'
 end
 
-module EMMongo
+module EM::Mongo
   class Buffer
     class Overflow    < Exception; end
     class InvalidType < Exception; end

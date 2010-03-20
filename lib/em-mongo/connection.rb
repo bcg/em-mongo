@@ -1,4 +1,4 @@
-module EMMongo
+module EM::Mongo
   DEFAULT_IP   = "127.0.0.1"
   DEFAULT_PORT = 27017
   DEFAULT_DB   = "db"
@@ -33,7 +33,7 @@ module EMMongo
     # RMongo interface
     def collection(db = DEFAULT_DB, ns = DEFAULT_NS)
       raise "Not connected" if not connected?
-      EMMongo::Collection.new(db, ns, self)
+      EM::Mongo::Collection.new(db, ns, self)
     end
 
     # MongoDB Commands
@@ -165,17 +165,17 @@ module EMMongo
   end
 end
 
-# Make EMMongo look like mongo-ruby-driver
-module EMMongo
+# Make EM::Mongo look like mongo-ruby-driver
+module EM::Mongo
   class Database
     def initialize(name = DEFAULT_DB, connection = nil)
       @db_name = name
-      @em_connection = connection || EMMongo::Connection.new
+      @em_connection = connection || EM::Mongo::Connection.new
       @collection = nil
     end
 
     def collection(name = DEFAULT_NS)
-      @collection = EMMongo::Collection.new(@db_name, name, @em_connection)
+      @collection = EM::Mongo::Collection.new(@db_name, name, @em_connection)
     end
 
     def close
@@ -190,7 +190,7 @@ module EMMongo
     end
     
     def db(name = DEFAULT_DB)
-      @db[name] = EMMongo::Database.new(name, @em_connection)
+      @db[name] = EM::Mongo::Database.new(name, @em_connection)
     end
 
     def collection(db = DEFAULT_DB, ns = DEFAULT_NS)

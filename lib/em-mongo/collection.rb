@@ -1,4 +1,4 @@
-module EMMongo
+module EM::Mongo
   class Collection
     attr_accessor :connection
 
@@ -6,7 +6,7 @@ module EMMongo
       @db = db || "db"
       @ns = ns || "ns"
       @name = [@db,@ns].join('.')
-      @connection = connection || EMMongo::Connection.new
+      @connection = connection || EM::Mongo::Connection.new
     end
 
     def find(selector={}, opts={}, &blk)
@@ -26,7 +26,7 @@ module EMMongo
     end
 
     def insert(obj)
-      obj[:_id] ||= EMMongo::Util.unique_id 
+      obj[:_id] ||= EM::Mongo::Util.unique_id 
       @connection.insert(@name, obj)
       obj
     end
