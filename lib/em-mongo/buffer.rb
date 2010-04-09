@@ -10,6 +10,28 @@ end
 
 module EM::Mongo
   class Buffer
+    MINKEY = -1
+    EOO = 0
+    NUMBER = 1
+    STRING = 2
+    OBJECT = 3
+    ARRAY = 4
+    BINARY = 5
+    UNDEFINED = 6
+    OID = 7
+    BOOLEAN = 8
+    DATE = 9
+    NULL = 10
+    REGEX = 11
+    REF = 12
+    CODE = 13
+    SYMBOL = 14
+    CODE_W_SCOPE = 15
+    NUMBER_INT = 16
+    TIMESTAMP = 17
+    NUMBER_LONG = 18
+    MAXKEY = 127
+
     class Overflow    < Exception; end
     class InvalidType < Exception; end
     
@@ -126,6 +148,10 @@ module EM::Mongo
                         when 14 # symbol
                           data.read(:int)
                           data.read(:cstring).intern
+                        when NUMBER_INT
+                          data.read(:int)
+                        when NUMBER_LONG
+                          data.read(:double)
                         end
           end
           
@@ -171,6 +197,12 @@ module EM::Mongo
           buf = Buffer.new
           data.each do |key,value|
             case value
+            when Fixnum
+              id = NUMBER_INT
+              type = :int
+            when Float
+              id = NUMBER_LONG
+              type = :double
             when Numeric
               id = 1
               type = :double
