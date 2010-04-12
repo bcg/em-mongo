@@ -116,7 +116,7 @@ module EM::Mongo
                           data.read(:bson)
                         when ARRAY
                           data.read(:bson).inject([]){ |a, (k,v)| a[k.to_s.to_i] = v; a }
-                        when BIANRY
+                        when BINARY
                           data._read data.read(:int)
                         when UNDEFINED
                         when OID
@@ -139,8 +139,8 @@ module EM::Mongo
                           Regexp.new(source, options)
                         when REF
                           ref = {
-                            :_ns = data.read(:cstring)
-                            :_id = data.read(:oid)
+                            :_ns => data.read(:cstring),
+                            :_id => data.read(:oid)
                           }
                         when CODE
                           data.read(:int)

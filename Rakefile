@@ -66,14 +66,16 @@ end
 
 desc "rspec tests"
 task :spec do
-  exec "bundle exec spec spec/*.rb -b -fs -color"
+  puts "We only support tests against a running MongoDB instance now"
+  #exec "bundle exec spec spec/*.rb -b -fs -color"
 end
 
 desc "run specs against mongodb"
 task :test do
   begin
     Rake::Task["mongodb:start_detached"].invoke
-    Rake::Task["spec"].invoke
+    #Rake::Task["spec"].invoke
+    exec "bundle exec spec spec/*.rb -b -fs -color"
   ensure
     Rake::Task["mongodb:stop"].invoke 
   end
