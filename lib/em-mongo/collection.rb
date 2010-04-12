@@ -36,11 +36,5 @@ module EM::Mongo
       true
     end
 
-    #def method_missing meth
-    #  puts meth
-    #  raise ArgumentError, 'collection cannot take block' if block_given?
-    #  (@subns ||= {})[meth] ||= self.class.new("#{@ns}.#{meth}", @client)
-    #end
-
   end
 end

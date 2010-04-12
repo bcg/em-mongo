@@ -107,27 +107,27 @@ module EM::Mongo
             key = data.read(:cstring).intern
 
             bson[key] = case type
-                        when 1 # number
+                        when NUMBER
                           data.read(:double)
-                        when 2 # string
+                        when STRING
                           data.read(:int)
                           data.read(:cstring)
-                        when 3 # object
+                        when OBJECT
                           data.read(:bson)
-                        when 4 # array
+                        when ARRAY
                           data.read(:bson).inject([]){ |a, (k,v)| a[k.to_s.to_i] = v; a }
-                        when 5 # binary
+                        when BIANRY
                           data._read data.read(:int)
-                        when 6 # undefined
-                        when 7 # oid
+                        when UNDEFINED
+                        when OID
                           data.read(:oid)
-                        when 8 # bool
+                        when BOOLEAN
                           data.read(:byte) == 1 ? true : false
-                        when 9 # time
+                        when DATE
                           Time.at data.read(:longlong)/1000.0
-                        when 10 # nil
+                        when NULL
                           nil
-                        when 11 # regex
+                        when REGEX
                           source = data.read(:cstring)
                           options = data.read(:cstring).split('')
                           
@@ -137,15 +137,15 @@ module EM::Mongo
                           end
 
                           Regexp.new(source, options)
-                        when 12 # ref
-                          ref = {}
-                          ref[:_ns] = data.read(:cstring)
-                          ref[:_id] = data.read(:oid)
-                          ref
-                        when 13 # code
+                        when REF
+                          ref = {
+                            :_ns = data.read(:cstring)
+                            :_id = data.read(:oid)
+                          }
+                        when CODE
                           data.read(:int)
                           data.read(:cstring)
-                        when 14 # symbol
+                        when SYMBOL
                           data.read(:int)
                           data.read(:cstring).intern
                         when NUMBER_INT
@@ -315,132 +315,6 @@ module EM::Mongo
         @data, @pos = cur_data, cur_pos
         nil
       end
-    end
-  end
-end
-
-if $0 =~ /bacon/ or $0 == __FILE__
-  require 'bacon'
-  Bacon.summary_on_exit
-  include Mongo
-
-  describe Buffer do
-    before do
-      @buf = Buffer.new
-    end
-
-    should 'have contents' do
-      @buf.contents.should == ''
-    end
-
-    should 'initialize with data' do
-      @buf = Buffer.new('abc')
-      @buf.contents.should == 'abc'
-    end
-
-    should 'append raw data' do
-      @buf << 'abc'
-      @buf << 'def'
-      @buf.contents.should == 'abcdef'
-    end
-
-    should 'append other buffers' do
-      @buf << Buffer.new('abc')
-      @buf.data.should == 'abc'
-    end
-
-    should 'have a position' do
-      @buf.pos.should == 0
-    end
-
-    should 'have a length' do
-      @buf.length.should == 0
-      @buf << 'abc'
-      @buf.length.should == 3
-    end
-
-    should 'know the end' do
-      @buf.empty?.should == true
-    end
-
-    should 'read and write data' do
-      @buf._write('abc')
-      @buf.rewind
-      @buf._read(2).should == 'ab'
-      @buf._read(1).should == 'c'
-    end
-
-    should 'raise on overflow' do
-      lambda{ @buf._read(1) }.should.raise Buffer::Overflow
-    end
-
-    should 'raise on invalid types' do
-      lambda{ @buf.read(:junk) }.should.raise Buffer::InvalidType
-      lambda{ @buf.write(:junk, 1) }.should.raise Buffer::InvalidType
-    end
-  
-    { :byte => 0b10101010,
-      :short => 100,
-      :int => 65536,
-      :double => 123.456,
-      :long => 100_000_000,
-      :longlong => 666_555_444_333_222_111,
-      :cstring => 'hello',
-    }.each do |type, value|
-
-      should "read and write a #{type}" do
-        @buf.write(type, value)
-        @buf.rewind
-        @buf.read(type).should == value
-        @buf.should.be.empty
-      end
-
-    end
-    
-    should "read and write multiple times" do
-      arr = [ :byte, 0b10101010, :short, 100 ]
-      @buf.write(*arr)
-      @buf.rewind
-      @buf.read(arr.shift).should == arr.shift
-      @buf.read(arr.shift).should == arr.shift
-    end
-    
-    [
-      { :num => 1                                      },
-      { :symbol => :abc                                },
-      { :object => {}                                  },
-      { :array => [1, 2, 3]                            },
-      { :string => 'abcdefg'                           },
-      { :oid => { :_id => '51d9ca7053a2012be4ecd660' } },
-      { :ref => { :_ns => 'namespace',
-                  :_id => '51d9ca7053a2012be4ecd660' } },
-      { :boolean => true                               },
-      { :time => Time.at(Time.now.to_i)                },
-      { :null => nil                                   },
-      { :regex => /^.*?def/im                          }
-    ]. each do |bson|
-
-      should "read and write bson with #{bson.keys.first}s" do
-        @buf.write(:bson, bson)
-        @buf.rewind
-        @buf.read(:bson).should == bson
-        @buf.should.be.empty
-      end
-
-    end
-
-    should 'do transactional reads with #extract' do
-      @buf.write :byte, 8
-      orig = @buf.to_s
-
-      @buf.rewind
-      @buf.extract do |b|
-        b.read :byte
-        b.read :short
-      end
-
-      @buf.pos.should == 0
-      @buf.data.should == orig
     end
   end
 end
