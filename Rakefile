@@ -66,8 +66,7 @@ end
 
 desc "rspec tests"
 task :spec do
-  puts "We only support tests against a running MongoDB instance now"
-  #exec "bundle exec spec spec/*.rb -b -fs -color"
+  exec "bundle exec spec spec/*.rb -b -fs -color"
 end
 
 desc "run specs against mongodb"
