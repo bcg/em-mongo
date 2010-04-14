@@ -73,6 +73,7 @@ desc "run specs against mongodb"
 task :test do
   begin
     Rake::Task["mongodb:start_detached"].invoke
+    sleep 1
     Rake::Task["spec"].invoke
   ensure
     Rake::Task["mongodb:stop"].invoke 

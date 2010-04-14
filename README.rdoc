@@ -21,14 +21,18 @@ with mongo-ruby-driver as possible.
 
 == Todo
 
-1. collection.index()
-2. more collection.find() unit tests
-3. put a gem up
+1. collection.index
+2. collection.update
+
+== Contact
+
+* Twitter: @brendengrace
+* IRC: bcg
+* Email: Base64.decode64("YnJlbmRlbi5ncmFjZUBnbWFpbC5jb20=\n")
 
 == Credit
 
-1. Aman Gupta (tmm1)
-2. Brenden Grace (bcg)
+Aman Gupta (tmm1) wrote the original RMongo which em-mongo is based on.
 
 == References
 

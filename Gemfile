@@ -1,9 +1,10 @@
 source :gemcutter
 
-gem "eventmachine"
-gem "em-spec"
-gem "rspec"
-gem "em-spec"
-if RUBY_VERSION < '1.9'
+group :test do
+  gem "eventmachine"
   gem "uuid"
+  gem "bson"
+  gem "rspec"
+  gem "em-spec"
 end
+
