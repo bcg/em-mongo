@@ -19,6 +19,9 @@ module EM::Mongo
     OP_INSERT   = 2002
     OP_QUERY    = 2004
     OP_DELETE   = 2006
+    
+    STANDARD_HEADER_SIZE = 16
+    RESPONSE_HEADER_SIZE = 20
 
     attr_reader :connection
 
@@ -30,55 +33,72 @@ module EM::Mongo
       @is_connected
     end
 
-    # RMongo interface
+    # XXX RMongo interface
     def collection(db = DEFAULT_DB, ns = DEFAULT_NS)
       raise "Not connected" if not connected?
       EM::Mongo::Collection.new(db, ns, self)
     end
 
+    def new_request_id
+      @request_id += 1
+    end
+
     # MongoDB Commands
 
-    def send_command(id, *args, &blk)
-      request_id = @request_id += 1
+    def message_headers(operation, request_id, message)
+      headers = BSON::ByteBuffer.new
+      headers.put_int(16 + message.size)
+      headers.put_int(request_id)
+      headers.put_int(0)
+      headers.put_int(operation)
+      headers
+    end
 
-      callback {
-        buf  = Buffer.new
-        buf.write :int, request_id,
-                  :int, response = 0,
-                  :int, operation = id
+    def send_command(buffer, request_id, &blk)
 
-        buf.write *args
-        send_data [ buf.size + 4 ].pack('i') # header length first
-        send_data buf.data
-      }
+      callback do
+        send_data buffer
+      end
 
       @responses[request_id] = blk if blk
       request_id
     end
 
+
     def insert(collection_name, documents)
-      # XXX multiple documents?
-      send_command(OP_INSERT, :int,      RESERVED,
-                              :cstring,  collection_name,
-                              :bson,     documents)
+      message = BSON::ByteBuffer.new([0, 0, 0, 0])
+      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
+
+      documents = [documents] if not documents.is_a?(Array)
+      documents.each { |doc| message.put_array(BSON::BSON_CODER.serialize(doc, true, true).to_a) }
+
+      req_id = new_request_id
+      message.prepend!(message_headers(OP_INSERT, req_id, message))
+      send_command(message.to_s, req_id)
     end
 
     def delete(collection_name, selector)
-      send_command(OP_DELETE, :int,      RESERVED,
-                              :cstring,  collection_name,
-                              :int,      RESERVED,
-                              :bson,     selector)
+      message = BSON::ByteBuffer.new([0, 0, 0, 0])
+      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
+      message.put_int(0)
+      message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
+      req_id = new_request_id
+      message.prepend!(message_headers(OP_DELETE, req_id, message))
+      send_command(message.to_s, req_id)
     end
 
-    def find(collection_name, skip, limit, query, &blk)
-      send_command(OP_QUERY,  :int,       RESERVED,
-                              :cstring,   collection_name,
-                              :int,       skip,
-                              :int,       limit,
-                              :bson,      query,
-                              &blk)
+    def find(collection_name, skip, limit, query, fields, &blk)
+      message = BSON::ByteBuffer.new
+      message.put_int(RESERVED) # query options
+      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
+      message.put_int(skip)
+      message.put_int(limit)
+      message.put_array(BSON::BSON_CODER.serialize(query, false).to_a)
+      message.put_array(BSON::BSON_CODER.serialize(fields, false).to_a) if fields
+      req_id = new_request_id
+      message.prepend!(message_headers(OP_QUERY, req_id, message))
+      send_command(message.to_s, req_id, &blk)
     end
-
 
     # EM hooks
     def initialize(options={})
@@ -88,7 +108,7 @@ module EM::Mongo
       @host = options[:host] || DEFAULT_IP
       @port = options[:port] || DEFAULT_PORT
 
-      @on_close = proc{
+      @on_close = proc {
         raise Error, "could not connect to server #{@host}:#{@port}"
       }
       timeout options[:timeout] if options[:timeout]
@@ -101,36 +121,82 @@ module EM::Mongo
     end
 
     def connection_completed
-      log 'connected'
-      @buf = Buffer.new
+      @buffer = BSON::ByteBuffer.new
       @is_connected = true
       @on_close = proc{
       }
       succeed
     end
 
-    def receive_data data
-      log "receive_data: #{data.size}"#, data
 
-      @buf << data
+    def message_received?
+      size = @buffer.get_int
+      @buffer.rewind
+      @buffer.size >= size-4 ? true : false
+    end
 
-      until @buf.empty?
-        size = @buf._peek(0, 4, 'I')
+    def receive_data(data)
 
-        break unless @buf.size >= size-4
+      @buffer.put_array(data.unpack('C*'))
+      @buffer.rewind
+      return if @buffer.size < STANDARD_HEADER_SIZE
 
-        size, id, response, operation = @buf.read(:int, :int, :int, :int)
-        reserved, cursor, start, num = @buf.read(:int, :longlong, :int, :int)
+      if message_received?
 
-        results = (1..num).map do
-          @buf.read(:bson)
+        # Header
+        header = BSON::ByteBuffer.new
+        header.put_array(@buffer.get(STANDARD_HEADER_SIZE))
+        unless header.size == STANDARD_HEADER_SIZE
+          raise "Short read for DB header: " +
+            "expected #{STANDARD_HEADER_SIZE} bytes, saw #{header.size}"
+        end
+        header.rewind
+        size        = header.get_int
+        request_id  = header.get_int
+        response_to = header.get_int
+        op          = header.get_int
+
+        # Response Header
+        response_header = BSON::ByteBuffer.new
+        response_header.put_array(@buffer.get(RESPONSE_HEADER_SIZE))
+        if response_header.length != RESPONSE_HEADER_SIZE
+          raise "Short read for DB response header; " +
+            "expected #{RESPONSE_HEADER_SIZE} bytes, saw #{response_header.length}"
         end
 
-        if cb = @responses.delete(response)
-          cb.call(results)
+        response_header.rewind
+        result_flags     = response_header.get_int
+        cursor_id        = response_header.get_long
+        starting_from    = response_header.get_int
+        number_remaining = response_header.get_int
+
+        # Documents
+        docs = (1..number_remaining).map do |n|
+
+          buf = BSON::ByteBuffer.new
+          buf.put_int(@buffer.get_int)
+
+          buf.rewind
+          size = buf.get_int
+
+          if size > @buffer.size
+            @buffer = ''
+            raise "Buffer Overflow: Failed to parse buffer"
+          end
+          buf.put_array(@buffer.get(size-4), 4)
+
+          buf.rewind
+          BSON::BSON_CODER.deserialize(buf)
         end
-        close_connection if @close_pending and @responses.size == 0
+
+        @buffer.clear
+
+        if cb = @responses.delete(response_to)
+          cb.call(docs)
+        end
+        close_connection if @close_pending and @responses.size == 0 
       end
+      
     end
 
     def send_data data

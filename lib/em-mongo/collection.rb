@@ -15,7 +15,7 @@ module EM::Mongo
       skip  = opts.delete(:skip) || 0
       limit = opts.delete(:limit) || 0
 
-      @connection.find(@name, skip, limit, selector, &blk)
+      @connection.find(@name, skip, limit, selector, nil, &blk)
     end
 
     def first(selector={}, opts={}, &blk)
@@ -26,7 +26,8 @@ module EM::Mongo
     end
 
     def insert(obj)
-      obj[:_id] ||= EM::Mongo::Util.unique_id 
+      #obj[:_id] ||= EM::Mongo::Util.unique_id 
+      obj['_id'] ||= EM::Mongo::Util.unique_id
       @connection.insert(@name, obj)
       obj
     end

@@ -74,8 +74,8 @@ desc "run specs against mongodb"
 task :test do
   begin
     Rake::Task["mongodb:start_detached"].invoke
-    #Rake::Task["spec"].invoke
-    exec "bundle exec spec spec/*.rb -b -fs -color"
+    sleep 1
+    Rake::Task["spec"].invoke
   ensure
     Rake::Task["mongodb:stop"].invoke 
   end
