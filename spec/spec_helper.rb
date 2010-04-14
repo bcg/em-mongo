@@ -1,10 +1,9 @@
-require File.dirname(__FILE__) + '/../lib/em-mongo'
+require "rubygems"
+require "bundler"
 
-#$LOAD_PATH << File.dirname(__FILE__)+'/../../em-spec/lib'
-#require File.dirname(__FILE__)+'/../../em-spec/lib/em/spec'
-#require 'spec'
-#require File.dirname(__FILE__)+'/../../em-spec/lib/em/spec/rspec'
-#EM.spec_backend = EventMachine::Spec::Rspec
+Bundler.setup(:test)
+
+require File.expand_path('../lib/em-mongo', File.dirname(__FILE__))
 
 require "em-spec/rspec"
 

@@ -1,4 +1,4 @@
-require File.dirname(__FILE__) + '/spec_helper.rb'
+require File.expand_path('spec_helper', File.dirname(__FILE__))
 
 describe EMMongo::Connection do
   include EM::SpecHelper
@@ -32,7 +32,7 @@ describe EMMongo::Connection do
   # Support the old RMongo interface for now
   it 'should instantiate a Collection' do
     EM::Spec::Mongo.connection do |connection|
-      connection.collection.is_a?(Collection).should == true
+      connection.collection.is_a?(EM::Mongo::Collection).should == true
       EM::Spec::Mongo.close
     end 
   end
@@ -40,9 +40,9 @@ describe EMMongo::Connection do
   it 'should instantiate a Databse' do
     EM::Spec::Mongo.connection do |connection|
       db1 = connection.db
-      db1.is_a?(Database).should == true
+      db1.is_a?(EM::Mongo::Database).should == true
       db2 = connection.db('db2')
-      db2.is_a?(Database).should == true
+      db2.is_a?(EM::Mongo::Database).should == true
       db2.should_not == db1
       EM::Spec::Mongo.close
     end 
