@@ -3,20 +3,36 @@
 An EventMachine client for MongoDB. Originally based on RMongo. This client aims to be as api compatible
 with mongo-ruby-driver as possible.
 
+== Changelog
+
+= 0.2.4
+
+ * Remove support for symbols, needs to be enforced still
+ * Remove lib/buffer.rb and all custom BSON parsing 
+ * Remove UUID dependency (replaced by BSON::ObjectID.new)
+ * Fixes a BufferOverflow because of misunderstood types
+
+= 0.1.1 - Initial Relase
+
+ * Rspec tests
+ * Fixes a BufferOverflow with large Hashes
+ * Fork of RMongo
+
 == Examples
 
    require 'em-mongo'
+
    EM.run do
      db = EM::Mongo::Connection.new.db('db')
      collection = db.collection('test')
      EM.next_tick do
        hash = collection.insert(Hash.new)
-       found = collection.find(:_id => hash[:_id]) do |res|
+       found = collection.find('_id' => hash['_id']) do |res|
          puts res.inspect
+         EM.stop
        end
        collection.remove(hash)
      end
-     EM.add_timer(2) { EM.stop }
    end
 
 == Todo
@@ -28,7 +44,7 @@ with mongo-ruby-driver as possible.
 
 * Twitter: @brendengrace
 * IRC: bcg
-* Email: Base64.decode64("YnJlbmRlbi5ncmFjZUBnbWFpbC5jb20=\n")
+* Email: brenden.grace@gmail.com
 
 == Credit
 
