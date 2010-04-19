@@ -25,6 +25,5 @@ Gem::Specification.new do |s|
 
   s.add_dependency("eventmachine", ['>= 0.12.10'])
   s.add_dependency("bson", ['>= 0.20.1'])
-  s.add_dependency("uuid", ['>= 2.3.0'])
 
 end
