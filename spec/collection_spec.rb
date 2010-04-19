@@ -63,6 +63,18 @@ describe EMMongo::Collection do
     end
   end
 
+  it 'should update an object' do
+    EM::Spec::Mongo.collection do |collection|
+      obj = collection.insert('hello' => 'world')
+      collection.update({'hello' => 'world'}, {'hello' => 'newworld'})
+      collection.find({'_id' => obj['_id']},{}) do |res|
+        res[0]['hello'].should == 'newworld'
+        EM::Spec::Mongo.close
+      end
+    end
+  end
+
+
   it 'should remove an object' do
     EM::Spec::Mongo.collection do |collection|
       obj = collection.insert('hello' => 'world')

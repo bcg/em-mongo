@@ -77,6 +77,23 @@ module EM::Mongo
       send_command(message.to_s, req_id)
     end
 
+    def update(collection_name, selector, document, options)
+      message = BSON::ByteBuffer.new([0, 0, 0, 0])
+      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
+
+      flags  = 0
+      flags += 1 if options[:upsert]
+      flags += 2 if options[:multi]
+      message.put_int(flags)
+
+      message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
+      message.put_array(BSON::BSON_CODER.serialize(document, true, true).to_a) 
+
+      req_id = new_request_id
+      message.prepend!(message_headers(OP_UPDATE, req_id, message))
+      send_command(message.to_s, req_id)
+    end
+
     def delete(collection_name, selector)
       message = BSON::ByteBuffer.new([0, 0, 0, 0])
       BSON::BSON_RUBY.serialize_cstr(message, collection_name)

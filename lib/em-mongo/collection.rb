@@ -31,6 +31,11 @@ module EM::Mongo
       obj
     end
 
+    def update(selector, updater, opts={})
+      @connection.update(@name, selector, updater, opts)
+      true
+    end
+
     def remove(obj = {})
       @connection.delete(@name, obj)
       true

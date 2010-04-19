@@ -5,6 +5,10 @@ with mongo-ruby-driver as possible.
 
 == Changelog
 
+= 0.2.5
+
+ * collection.update
+
 = 0.2.4
 
  * Remove support for symbols, needs to be enforced still
@@ -37,8 +41,8 @@ with mongo-ruby-driver as possible.
 
 == Todo
 
-1. collection.index
-2. collection.update
+1. Refactor unit tests and make them more comprehensive
+2. collection.index
 
 == Contact
 
