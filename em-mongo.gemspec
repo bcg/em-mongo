@@ -8,8 +8,8 @@ Gem::Specification.new do |s|
   s.version = EM::Mongo::Version::STRING
 
   s.authors = ['bcg']
-  s.email   = Base64.decode64("YnJlbmRlbi5ncmFjZUBnbWFpbC5jb20=\n")
-  s.date    = '2010-03-03'
+  s.email   = 'brenden.grace@gmail.com'
+  s.date    = '2010-04-19'
 
   s.description = 'EventMachine drive for MongoDB.'
 
