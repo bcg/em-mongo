@@ -132,7 +132,7 @@ module EM::Mongo
       errback{ @on_close.call }
     end
 
-    def self.connect(host = DEFAULT_IP, port = DEFAUL_PORT, timeout = nil)
+    def self.connect(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
       opt = {:host => host, :port => port, :timeout => timeout}
       EM.connect(host, port, self, opt)
     end
