@@ -5,6 +5,10 @@ with mongo-ruby-driver as possible.
 
 == Changelog
 
+= 0.2.6
+
+ * 'limit' was broken in find because of poor protocol parsing: SHA: 69b61647f72a26c4ed437b3516f09cfe94175e2c
+
 = 0.2.5
 
  * collection.update
