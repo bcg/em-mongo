@@ -81,8 +81,8 @@ module EM::Mongo
       flags += 2 if options[:multi]
       message.put_int(flags)
 
-      message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(document, true, true).to_a) 
+      message.put_array(BSON::BSON_CODER.serialize(selector, true, true).to_a)
+      message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a) 
 
       req_id = new_request_id
       message.prepend!(message_headers(OP_UPDATE, req_id, message))
