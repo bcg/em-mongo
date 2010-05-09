@@ -1,8 +1,9 @@
 module EM::Mongo
-  DEFAULT_IP   = "127.0.0.1"
-  DEFAULT_PORT = 27017
-  DEFAULT_DB   = "db"
-  DEFAULT_NS   = "ns"
+  DEFAULT_IP         = "127.0.0.1"
+  DEFAULT_PORT       = 27017
+  DEFAULT_DB         = "db"
+  DEFAULT_NS         = "ns"
+  DEFAULT_QUERY_DOCS = 101
 
   module EMConnection
     class Error < Exception; 
@@ -31,12 +32,6 @@ module EM::Mongo
 
     def connected?
       @is_connected
-    end
-
-    # XXX RMongo interface
-    def collection(db = DEFAULT_DB, ns = DEFAULT_NS)
-      raise "Not connected" if not connected?
-      EM::Mongo::Collection.new(db, ns, self)
     end
 
     def new_request_id
@@ -119,17 +114,18 @@ module EM::Mongo
 
     # EM hooks
     def initialize(options={})
-      @request_id = 0
-      @responses = {}
-      @is_connected = false
-      @host = options[:host] || DEFAULT_IP
-      @port = options[:port] || DEFAULT_PORT
+      @request_id    = 0
+      @responses     = {}
+      @is_connected  = false
+      @host          = options[:host] || DEFAULT_IP
+      @port          = options[:port] || DEFAULT_PORT
+      @on_unbind     = options[:unbind_cb] || proc {} 
 
       @on_close = proc {
-        raise Error, "could not connect to server #{@host}:#{@port}"
+        raise Error, "failure with mongodb server #{@host}:#{@port}"
       }
       timeout options[:timeout] if options[:timeout]
-      errback{ @on_close.call }
+      errback { @on_close.call }
     end
 
     def self.connect(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
@@ -140,26 +136,28 @@ module EM::Mongo
     def connection_completed
       @buffer = BSON::ByteBuffer.new
       @is_connected = true
-      @on_close = proc{
-      }
       succeed
     end
 
 
     def message_received?
       size = @buffer.get_int
+      #@buffer.put_int(size, -1)
       @buffer.rewind
-      @buffer.size >= size-4 ? true : false
+
+      if @buffer.size >= size-4
+        true
+      else 
+        false
+      end
     end
 
     def receive_data(data)
 
-      @buffer.put_array(data.unpack('C*'))
-      @buffer.rewind
+      @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
       return if @buffer.size < STANDARD_HEADER_SIZE
 
       if message_received?
-
         # Header
         header = BSON::ByteBuffer.new
         header.put_array(@buffer.get(STANDARD_HEADER_SIZE))
@@ -198,12 +196,12 @@ module EM::Mongo
 
           if size > @buffer.size
             @buffer = ''
-            raise "Buffer Overflow: Failed to parse buffer"
+            raise "Buffer Overflow: Failed to parse document buffer: size: #{size}, expected: #{@buffer.size}"
           end
           buf.put_array(@buffer.get(size-4), 4)
 
           buf.rewind
-          BSON::BSON_CODER.deserialize(buf)
+          BSON::BSON_RUBY.deserialize(buf)
         end
 
         @buffer.clear
@@ -217,19 +215,16 @@ module EM::Mongo
     end
 
     def send_data data
-      log "send_data:#{data.size}"#, data
       super data
     end
 
     def unbind
-      log "unbind"
       @is_connected = false
-      @on_close.call unless $!
+      @on_unbind.call
     end
 
     def close
-      log "close"
-      @on_close = proc{ yield if block_given? }
+      @on_close = proc { yield if block_given? }
       if @responses.empty?
         close_connection
       else
@@ -240,8 +235,7 @@ module EM::Mongo
     private
 
     def log *args
-      return
-      pp args
+      puts args
       puts
     end
 
@@ -269,15 +263,10 @@ module EM::Mongo
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
       @em_connection = EMConnection.connect(host, port, timeout) 
       @db = {}
-      self
     end
     
     def db(name = DEFAULT_DB)
-      @db[name] = EM::Mongo::Database.new(name, @em_connection)
-    end
-
-    def collection(db = DEFAULT_DB, ns = DEFAULT_NS)
-      @em_connection.collection(db, ns)
+      @db[name] ||= EM::Mongo::Database.new(name, @em_connection)
     end
 
     def close

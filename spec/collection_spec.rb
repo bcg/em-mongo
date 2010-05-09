@@ -63,6 +63,19 @@ describe EMMongo::Collection do
     end
   end
 
+  it 'should find large sets of objects' do
+    EM::Spec::Mongo.collection do |collection|
+      (0..1500).each { |n| collection.insert({n.to_s => n.to_s}) }
+      collection.find do |res|
+        res.size.should == EM::Mongo::DEFAULT_QUERY_DOCS
+        collection.find({}, {:limit => 1500}) do |res|
+          res.size.should == 1500
+          EM::Spec::Mongo.close
+        end
+      end
+    end
+  end
+
   it 'should update an object' do
     EM::Spec::Mongo.collection do |collection|
       obj = collection.insert('hello' => 'world')

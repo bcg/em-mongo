@@ -16,24 +16,16 @@ describe EMMongo::Connection do
   it 'should close' do
     em do
       connection = EMMongo::Connection.new
-      EM.next_tick do
+      EM.add_timer(1) do
         connection.connected?.should == true
         connection.close
       end
-      EM.add_timer(1) do
+      EM.add_timer(2) do
         EM.next_tick do
           connection.connected?.should == false
           done
         end
       end
-    end 
-  end
-
-  # Support the old RMongo interface for now
-  it 'should instantiate a Collection' do
-    EM::Spec::Mongo.connection do |connection|
-      connection.collection.is_a?(EM::Mongo::Collection).should == true
-      EM::Spec::Mongo.close
     end 
   end
 
