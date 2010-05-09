@@ -3,28 +3,6 @@
 An EventMachine client for MongoDB. Originally based on RMongo. This client aims to be as api compatible
 with mongo-ruby-driver as possible.
 
-== Changelog
-
-= 0.2.6
-
- * 'limit' was broken in find because of poor protocol parsing: SHA: 69b61647f72a26c4ed437b3516f09cfe94175e2c
-
-= 0.2.5
-
- * collection.update
-
-= 0.2.4
-
- * Remove support for symbols, needs to be enforced still
- * Remove lib/buffer.rb and all custom BSON parsing 
- * Remove UUID dependency (replaced by BSON::ObjectID.new)
- * Fixes a BufferOverflow because of misunderstood types
-
-= 0.1.1 - Initial Relase
-
- * Rspec tests
- * Fixes a BufferOverflow with large Hashes
- * Fork of RMongo
 
 == Examples
 

@@ -87,6 +87,17 @@ describe EMMongo::Collection do
     end
   end
 
+  it 'should update an object with $inc' do
+    EM::Spec::Mongo.collection do |collection|
+      obj = collection.insert('hello' => 'world')
+      collection.update({'hello' => 'world'}, {'$inc' => {'count' => 1}})
+      collection.find({'_id' => obj['_id']},{}) do |res|
+        res.first['hello'].should == 'world'
+        res.first['count'].should == 1
+        EM::Spec::Mongo.close
+      end
+    end
+  end
 
   it 'should remove an object' do
     EM::Spec::Mongo.collection do |collection|
