@@ -25,6 +25,7 @@ with mongo-ruby-driver as possible.
 
 1. Refactor unit tests and make them more comprehensive
 2. collection.index
+3. Server side aggregate functions (reference[http://www.mongodb.org/display/DOCS/Aggregation#Aggregation-Distinct])
 
 == Contact
 
