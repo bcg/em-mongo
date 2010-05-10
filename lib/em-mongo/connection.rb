@@ -145,11 +145,7 @@ module EM::Mongo
       #@buffer.put_int(size, -1)
       @buffer.rewind
 
-      if @buffer.size >= size-4
-        true
-      else 
-        false
-      end
+      @buffer.size >= size-4
     end
 
     def receive_data(data)
