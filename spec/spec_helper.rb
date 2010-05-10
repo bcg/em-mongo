@@ -1,8 +1,3 @@
-require "rubygems"
-require "bundler"
-
-Bundler.setup(:test)
-
 require File.expand_path('../lib/em-mongo', File.dirname(__FILE__))
 
 require "em-spec/rspec"
