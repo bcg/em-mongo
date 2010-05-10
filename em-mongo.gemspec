@@ -1,6 +1,5 @@
 #!/usr/bin/env gem build
 
-require "base64"
 require File.expand_path("lib/em-mongo", File.dirname(__FILE__))
 
 Gem::Specification.new do |s|
@@ -21,7 +20,7 @@ Gem::Specification.new do |s|
 
   s.rubygems_version = '1.3.6'
 
-  s.summary = 'EventMachine drive for MongoDB.'
+  s.summary = 'EventMachine driver for MongoDB.'
 
   s.add_dependency("eventmachine", ['>= 0.12.10'])
   s.add_dependency("bson", ['>= 0.20.1'])
