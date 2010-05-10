@@ -197,7 +197,7 @@ module EM::Mongo
           buf.put_array(@buffer.get(size-4), 4)
 
           buf.rewind
-          BSON::BSON_RUBY.deserialize(buf)
+          BSON::BSON_CODER.deserialize(buf)
         end
 
         @buffer.clear
