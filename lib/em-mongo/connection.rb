@@ -50,6 +50,7 @@ module EM::Mongo
     end
 
     def send_command(buffer, request_id, &blk)
+      p :send_command => request_id
 
       callback do
         send_data buffer
@@ -149,11 +150,13 @@ module EM::Mongo
     end
 
     def receive_data(data)
+      p :receive_data => data.size
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
       return if @buffer.size < STANDARD_HEADER_SIZE
 
       if message_received?
+        p :message_received!
         # Header
         header = BSON::ByteBuffer.new
         header.put_array(@buffer.get(STANDARD_HEADER_SIZE))

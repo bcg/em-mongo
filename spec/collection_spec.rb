@@ -201,4 +201,20 @@ describe EMMongo::Collection do
     end
   end
 
+  it 'should handle multiple pending queries' do
+    EM::Spec::Mongo.collection do |collection|
+      id = collection.insert("foo" => "bar")['_id']
+      received = 0
+
+      10.times do |n|
+        collection.first("_id" => id) do |res| 
+          received += 1
+          p :res => received
+          EM::Spec::Mongo.close if received == 10
+        end 
+      end
+
+    end
+  end
+
 end

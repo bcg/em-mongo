@@ -40,3 +40,4 @@ module EM
   end
 end
 
+$stdout.sync = true
