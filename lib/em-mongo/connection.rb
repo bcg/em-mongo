@@ -139,9 +139,8 @@ module EM::Mongo
     end
 
     def message_received?
-      size = @buffer.get_int
       @buffer.rewind
-      @buffer.size >= size # JCM -4
+      @buffer.size >= @buffer.get_int
     end
 
     def receive_data(data)
@@ -151,27 +150,23 @@ module EM::Mongo
       return if @buffer.size < STANDARD_HEADER_SIZE
 
       return if !message_received?
+
+      @buffer.rewind
       
       # Header
-      header = BSON::ByteBuffer.new
-      header.put_array(@buffer.get(STANDARD_HEADER_SIZE))
-      header.rewind
-      size        = header.get_int
-      request_id  = header.get_int
-      response_to = header.get_int
-      op          = header.get_int
+      size        = @buffer.get_int
+      request_id  = @buffer.get_int
+      response_to = @buffer.get_int
+      op          = @buffer.get_int
 
       # Response Header
-      response_header = BSON::ByteBuffer.new
-      response_header.put_array(@buffer.get(RESPONSE_HEADER_SIZE))
-      response_header.rewind
-      result_flags     = response_header.get_int
-      cursor_id        = response_header.get_long
-      starting_from    = response_header.get_int
-      number_remaining = response_header.get_int
+      result_flags     = @buffer.get_int
+      cursor_id        = @buffer.get_long
+      starting_from    = @buffer.get_int
+      number_returned  = @buffer.get_int
 
       # Documents
-      docs = number_remaining.times.collect do
+      docs = number_returned.times.collect do
         buf = BSON::ByteBuffer.new
         size= @buffer.get_int
         buf.put_int(size)
@@ -190,12 +185,8 @@ module EM::Mongo
       if cb = @responses.delete(response_to)
         cb.call(docs)
       end
-      close_connection if @close_pending and @responses.size == 0 
+      close_connection if @close_pending && @responses.size == 0 
       
-    end
-
-    def send_data data
-      super data
     end
 
     def unbind
@@ -212,14 +203,8 @@ module EM::Mongo
       end
     end
 
-    private
-
-    def log *args
-      puts args
-      puts
-    end
-
   end
+
 end
 
 # Make EM::Mongo look like mongo-ruby-driver
