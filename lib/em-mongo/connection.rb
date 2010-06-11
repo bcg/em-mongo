@@ -59,7 +59,6 @@ module EM::Mongo
       request_id
     end
 
-
     def insert(collection_name, documents)
       message = BSON::ByteBuffer.new([0, 0, 0, 0])
       BSON::BSON_RUBY.serialize_cstr(message, collection_name)
@@ -139,74 +138,59 @@ module EM::Mongo
       succeed
     end
 
-
     def message_received?
       size = @buffer.get_int
-      #@buffer.put_int(size, -1)
       @buffer.rewind
-
-      @buffer.size >= size-4
+      @buffer.size >= size # JCM -4
     end
 
     def receive_data(data)
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
+      
       return if @buffer.size < STANDARD_HEADER_SIZE
 
-      if message_received?
-        # Header
-        header = BSON::ByteBuffer.new
-        header.put_array(@buffer.get(STANDARD_HEADER_SIZE))
-        unless header.size == STANDARD_HEADER_SIZE
-          raise "Short read for DB header: " +
-            "expected #{STANDARD_HEADER_SIZE} bytes, saw #{header.size}"
-        end
-        header.rewind
-        size        = header.get_int
-        request_id  = header.get_int
-        response_to = header.get_int
-        op          = header.get_int
+      return if !message_received?
+      
+      # Header
+      header = BSON::ByteBuffer.new
+      header.put_array(@buffer.get(STANDARD_HEADER_SIZE))
+      header.rewind
+      size        = header.get_int
+      request_id  = header.get_int
+      response_to = header.get_int
+      op          = header.get_int
 
-        # Response Header
-        response_header = BSON::ByteBuffer.new
-        response_header.put_array(@buffer.get(RESPONSE_HEADER_SIZE))
-        if response_header.length != RESPONSE_HEADER_SIZE
-          raise "Short read for DB response header; " +
-            "expected #{RESPONSE_HEADER_SIZE} bytes, saw #{response_header.length}"
-        end
+      # Response Header
+      response_header = BSON::ByteBuffer.new
+      response_header.put_array(@buffer.get(RESPONSE_HEADER_SIZE))
+      response_header.rewind
+      result_flags     = response_header.get_int
+      cursor_id        = response_header.get_long
+      starting_from    = response_header.get_int
+      number_remaining = response_header.get_int
 
-        response_header.rewind
-        result_flags     = response_header.get_int
-        cursor_id        = response_header.get_long
-        starting_from    = response_header.get_int
-        number_remaining = response_header.get_int
-
-        # Documents
-        docs = (1..number_remaining).map do |n|
-
-          buf = BSON::ByteBuffer.new
-          buf.put_int(@buffer.get_int)
-
-          buf.rewind
-          size = buf.get_int
-
-          if size > @buffer.size
-            @buffer = ''
-            raise "Buffer Overflow: Failed to parse document buffer: size: #{size}, expected: #{@buffer.size}"
-          end
-          buf.put_array(@buffer.get(size-4), 4)
-
-          buf.rewind
-          BSON::BSON_CODER.deserialize(buf)
-        end
-
-        @buffer.clear
-
-        if cb = @responses.delete(response_to)
-          cb.call(docs)
-        end
-        close_connection if @close_pending and @responses.size == 0 
+      # Documents
+      docs = number_remaining.times.collect do
+        buf = BSON::ByteBuffer.new
+        size= @buffer.get_int
+        buf.put_int(size)
+        buf.put_array(@buffer.get(size-4), 4)
+        buf.rewind
+        BSON::BSON_CODER.deserialize(buf)
       end
+
+      if @buffer.more?
+        remaining_bytes= @buffer.size-@buffer.position
+        @buffer.put_array(@buffer.get(remaining_bytes),0)
+      else
+        @buffer.clear
+      end
+
+      if cb = @responses.delete(response_to)
+        cb.call(docs)
+      end
+      close_connection if @close_pending and @responses.size == 0 
       
     end
 
