@@ -138,20 +138,45 @@ module EM::Mongo
       succeed
     end
 
-    def message_received?
-      @buffer.rewind
-      @buffer.size >= @buffer.get_int
+    def message_received?(buffer)
+      x= remaining_bytes(@buffer)
+      x > STANDARD_HEADER_SIZE && x >= peek_size(@buffer)
+    end
+
+    def remaining_bytes(buffer)
+      buffer.size-buffer.position
+    end
+    
+    def peek_size(buffer)
+      position= buffer.position
+      size= buffer.get_int
+      buffer.position= position
+      size
     end
 
     def receive_data(data)
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
       
-      return if @buffer.size < STANDARD_HEADER_SIZE
+      while message_received?(@buffer)
+        response_to, docs= next_response
+        callback = @responses.delete(response_to)
+        callback.call(docs) if callback
+      end
 
-      return if !message_received?
+      if @buffer.more?
+        remaining_bytes= @buffer.size-@buffer.position
+        @buffer.put_array(@buffer.get(remaining_bytes),0)
+        @buffer.rewind
+      else
+        @buffer.clear
+      end
 
-      @buffer.rewind
+      close_connection if @close_pending && @responses.empty? 
+      
+    end
+    
+    def next_response()
       
       # Header
       size        = @buffer.get_int
@@ -174,19 +199,8 @@ module EM::Mongo
         buf.rewind
         BSON::BSON_CODER.deserialize(buf)
       end
-
-      if @buffer.more?
-        remaining_bytes= @buffer.size-@buffer.position
-        @buffer.put_array(@buffer.get(remaining_bytes),0)
-      else
-        @buffer.clear
-      end
-
-      if cb = @responses.delete(response_to)
-        cb.call(docs)
-      end
-      close_connection if @close_pending && @responses.size == 0 
       
+      [response_to,docs]
     end
 
     def unbind
