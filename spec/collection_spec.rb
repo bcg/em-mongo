@@ -4,7 +4,7 @@ describe EMMongo::Collection do
   include EM::SpecHelper
 
   before(:all) do
-    @numbers = { 
+    @numbers = {
       1 => 'one',
       2 => 'two',
       3 => 'three',
@@ -32,7 +32,7 @@ describe EMMongo::Collection do
 
   it 'should find an object by attribute' do
     EM::Spec::Mongo.collection do |collection|
-      collection.insert("hello" => 'world') 
+      collection.insert("hello" => 'world')
       r = collection.find({"hello" => "world"},{}) do |res|
         res.size.should >= 1
         res[0]["hello"].should == "world"
@@ -43,7 +43,7 @@ describe EMMongo::Collection do
 
   it 'should find an object by id' do
     EM::Spec::Mongo.collection do |collection|
-      obj = collection.insert('hello' => 'world') 
+      obj = collection.insert('hello' => 'world')
       collection.find({'_id' => obj['_id']},{}) do |res|
         res.size.should >= 1
         res[0]['hello'].should == "world"
@@ -153,7 +153,7 @@ describe EMMongo::Collection do
         end
         EM::Spec::Mongo.close
       end
-      
+
     end
   end
 
@@ -207,11 +207,10 @@ describe EMMongo::Collection do
       received = 0
 
       10.times do |n|
-        collection.first("_id" => id) do |res| 
+        collection.first("_id" => id) do |res|
           received += 1
-          p :res => received
           EM::Spec::Mongo.close if received == 10
-        end 
+        end
       end
 
     end
