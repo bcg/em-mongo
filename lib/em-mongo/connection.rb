@@ -158,6 +158,7 @@ module EM::Mongo
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
       
+      @buffer.rewind
       while message_received?(@buffer)
         response_to, docs= next_response
         callback = @responses.delete(response_to)
@@ -166,7 +167,7 @@ module EM::Mongo
 
       if @buffer.more?
         remaining_bytes= @buffer.size-@buffer.position
-        @buffer.put_array(@buffer.get(remaining_bytes),0)
+        @buffer = BSON::ByteBuffer.new(@buffer.get(remaining_bytes))
         @buffer.rewind
       else
         @buffer.clear
@@ -183,20 +184,19 @@ module EM::Mongo
       request_id  = @buffer.get_int
       response_to = @buffer.get_int
       op          = @buffer.get_int
+      #puts "message header #{size} #{request_id} #{response_to} #{op}"
 
       # Response Header
       result_flags     = @buffer.get_int
       cursor_id        = @buffer.get_long
       starting_from    = @buffer.get_int
       number_returned  = @buffer.get_int
+      #puts "response header #{result_flags} #{cursor_id} #{starting_from} #{number_returned}"
 
       # Documents
       docs = number_returned.times.collect do
-        buf = BSON::ByteBuffer.new
-        size= @buffer.get_int
-        buf.put_int(size)
-        buf.put_array(@buffer.get(size-4), 4)
-        buf.rewind
+        size= peek_size(@buffer)
+        buf = BSON::ByteBuffer.new(@buffer.get(size))
         BSON::BSON_CODER.deserialize(buf)
       end
       
