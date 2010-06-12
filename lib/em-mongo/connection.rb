@@ -158,6 +158,7 @@ module EM::Mongo
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
       
+      @buffer.rewind
       while message_received?(@buffer)
         response_to, docs= next_response
         callback = @responses.delete(response_to)
@@ -166,7 +167,7 @@ module EM::Mongo
 
       if @buffer.more?
         remaining_bytes= @buffer.size-@buffer.position
-        @buffer.put_array(@buffer.get(remaining_bytes),0)
+        @buffer = BSON::ByteBuffer.new(@buffer.get(remaining_bytes))
         @buffer.rewind
       else
         @buffer.clear
