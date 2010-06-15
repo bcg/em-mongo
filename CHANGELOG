@@ -1,3 +1,8 @@
+= 0.2.9
+ 
+ * Performance enhacements by merrells
+ * Cleanups by jarib
+
 = 0.2.7
 
  * Fixes modifier issues in update. BSON would not allow '$' with key checks. (http://github.com/bcg/em-mongo/issues/3)
