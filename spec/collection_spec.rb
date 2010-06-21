@@ -55,7 +55,7 @@ describe EMMongo::Collection do
   it 'should find all objects' do
     EM::Spec::Mongo.collection do |collection|
       collection.insert('one' => 'one')
-      o = collection.insert('two' => 'two')
+      collection.insert('two' => 'two')
       collection.find do |res|
         res.size.should >= 2
         EM::Spec::Mongo.close

@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
 
   s.authors = ['bcg']
   s.email   = 'brenden.grace@gmail.com'
-  s.date    = '2010-04-19'
+  s.date    = '2010-06-21'
 
   s.description = 'EventMachine drive for MongoDB.'
 
