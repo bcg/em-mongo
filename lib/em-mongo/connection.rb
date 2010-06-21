@@ -194,7 +194,7 @@ module EM::Mongo
       #puts "response header #{result_flags} #{cursor_id} #{starting_from} #{number_returned}"
 
       # Documents
-      docs = number_returned.times.collect do
+      docs = [0..number_returned].map do
         size= peek_size(@buffer)
         buf = BSON::ByteBuffer.new(@buffer.get(size))
         BSON::BSON_CODER.deserialize(buf)
