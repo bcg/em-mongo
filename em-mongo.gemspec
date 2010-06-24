@@ -1,10 +1,8 @@
-#!/usr/bin/env gem build
-
-require File.expand_path("lib/em-mongo", File.dirname(__FILE__))
+version = File.read("VERSION").strip
 
 Gem::Specification.new do |s|
-  s.name    = EM::Mongo::NAME
-  s.version = EM::Mongo::Version::STRING
+  s.name    = 'em-mongo'
+  s.version = version
 
   s.authors = ['bcg']
   s.email   = 'brenden.grace@gmail.com'

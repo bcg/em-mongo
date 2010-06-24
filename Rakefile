@@ -1,5 +1,6 @@
 
 require 'rake'
+require 'rake/gempackagetask'
 
 require 'spec/rake/spectask'
 require 'fileutils'
@@ -46,6 +47,10 @@ class MongoRunner
  
 end
 
+spec = eval(File.read('em-mongo.gemspec'))
+Rake::GemPackageTask.new(spec) do |pkg|
+  pkg.gem_spec = spec
+end
 
 namespace :mongodb do
   desc "start mongodb"
