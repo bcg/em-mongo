@@ -6,6 +6,8 @@ module EM::Mongo
   DEFAULT_QUERY_DOCS = 101
 
   class EMConnection < EM::Connection
+    MAX_RETRIES = 5
+
     class Error < Exception;
       class ConnectionNotBound
       end
@@ -113,6 +115,7 @@ module EM::Mongo
     # EM hooks
     def initialize(options={})
       @request_id    = 0
+      @retries       = 0
       @responses     = {}
       @is_connected  = false
       @host          = options[:host] || DEFAULT_IP
@@ -134,6 +137,7 @@ module EM::Mongo
     def connection_completed
       @buffer = BSON::ByteBuffer.new
       @is_connected = true
+      @retries = 0
       succeed
     end
 
@@ -209,8 +213,14 @@ module EM::Mongo
       @responses = {}
 
       set_deferred_status(nil)
-      EM.add_timer(5) { reconnect(@host, @port) }
-#      @on_unbind.call
+
+      if @retries >= MAX_RETRIES
+        @on_unbind.call
+        return
+      end
+
+      @retries += 1
+      EM.add_timer(5) { p 'reconnect'; reconnect(@host, @port) }
     end
 
     def close
