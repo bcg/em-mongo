@@ -209,7 +209,7 @@ module EM::Mongo
       @responses = {}
 
       set_deferred_status(nil)
-      EM.add_timer(5) { p 'reconnect'; reconnect(@host, @port) }
+      EM.add_timer(5) { reconnect(@host, @port) }
 #      @on_unbind.call
     end
 
