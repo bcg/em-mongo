@@ -129,8 +129,8 @@ module EM::Mongo
       errback { @on_close.call }
     end
 
-    def self.connect(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
-      opt = {:host => host, :port => port, :timeout => timeout}
+    def self.connect(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = nil)
+      opt = {:host => host, :port => port, :timeout => timeout}.merge(opts)
       EM.connect(host, port, self, opt)
     end
 
@@ -220,7 +220,7 @@ module EM::Mongo
       end
 
       @retries += 1
-      EM.add_timer(5) { p 'reconnect'; reconnect(@host, @port) }
+      EM.add_timer(5) { reconnect(@host, @port) }
     end
 
     def close
@@ -254,8 +254,8 @@ module EM::Mongo
     end
   end
   class Connection
-    def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
-      @em_connection = EMConnection.connect(host, port, timeout)
+    def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})
+      @em_connection = EMConnection.connect(host, port, timeout, opts)
       @db = {}
     end
 
