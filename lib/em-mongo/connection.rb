@@ -5,7 +5,7 @@ module EM::Mongo
   DEFAULT_NS         = "ns"
   DEFAULT_QUERY_DOCS = 101
 
-  module EMConnection
+  class EMConnection < EM::Connection
     class Error < Exception;
       class ConnectionNotBound
       end
@@ -203,7 +203,14 @@ module EM::Mongo
 
     def unbind
       @is_connected = false
-      @on_unbind.call
+
+      # XXX do we need to fail the responses here?
+      @request_id = 0
+      @responses = {}
+
+      set_deferred_status(nil)
+      EM.add_timer(5) { p 'reconnect'; reconnect(@host, @port) }
+#      @on_unbind.call
     end
 
     def close
