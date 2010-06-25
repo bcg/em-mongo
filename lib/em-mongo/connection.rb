@@ -6,11 +6,11 @@ module EM::Mongo
   DEFAULT_QUERY_DOCS = 101
 
   module EMConnection
-    class Error < Exception; 
+    class Error < Exception;
       class ConnectionNotBound
       end
     end
-    
+
     include EM::Deferrable
 
     RESERVED    = 0
@@ -20,7 +20,7 @@ module EM::Mongo
     OP_INSERT   = 2002
     OP_QUERY    = 2004
     OP_DELETE   = 2006
-    
+
     STANDARD_HEADER_SIZE = 16
     RESPONSE_HEADER_SIZE = 20
 
@@ -50,7 +50,6 @@ module EM::Mongo
     end
 
     def send_command(buffer, request_id, &blk)
-
       callback do
         send_data buffer
       end
@@ -81,7 +80,7 @@ module EM::Mongo
       message.put_int(flags)
 
       message.put_array(BSON::BSON_CODER.serialize(selector, true, true).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a) 
+      message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a)
 
       req_id = new_request_id
       message.prepend!(message_headers(OP_UPDATE, req_id, message))
@@ -118,7 +117,7 @@ module EM::Mongo
       @is_connected  = false
       @host          = options[:host] || DEFAULT_IP
       @port          = options[:port] || DEFAULT_PORT
-      @on_unbind     = options[:unbind_cb] || proc {} 
+      @on_unbind     = options[:unbind_cb] || proc {}
 
       @on_close = proc {
         raise Error, "failure with mongodb server #{@host}:#{@port}"
@@ -146,7 +145,7 @@ module EM::Mongo
     def remaining_bytes(buffer)
       buffer.size-buffer.position
     end
-    
+
     def peek_size(buffer)
       position= buffer.position
       size= buffer.get_int
@@ -157,7 +156,7 @@ module EM::Mongo
     def receive_data(data)
 
       @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
-      
+
       @buffer.rewind
       while message_received?(@buffer)
         response_to, docs= next_response
@@ -173,12 +172,12 @@ module EM::Mongo
         @buffer.clear
       end
 
-      close_connection if @close_pending && @responses.empty? 
-      
+      close_connection if @close_pending && @responses.empty?
+
     end
-    
+
     def next_response()
-      
+
       # Header
       size        = @buffer.get_int
       request_id  = @buffer.get_int
@@ -239,10 +238,10 @@ module EM::Mongo
   end
   class Connection
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil)
-      @em_connection = EMConnection.connect(host, port, timeout) 
+      @em_connection = EMConnection.connect(host, port, timeout)
       @db = {}
     end
-    
+
     def db(name = DEFAULT_DB)
       @db[name] ||= EM::Mongo::Database.new(name, @em_connection)
     end
