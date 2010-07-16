@@ -4,6 +4,8 @@ require 'rake'
 require 'spec/rake/spectask'
 require 'fileutils'
 
+task :default => :spec
+
 class MongoRunner
   
   def self.mongo_db_dir

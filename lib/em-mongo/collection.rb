@@ -26,7 +26,7 @@ module EM::Mongo
     end
 
     def insert(obj)
-      obj['_id'] ||= EM::Mongo::Util.unique_id
+      obj['_id'] ||= BSON::ObjectID.new
       @connection.insert(@name, obj)
       obj
     end
