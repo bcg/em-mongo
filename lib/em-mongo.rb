@@ -14,12 +14,6 @@ module EM::Mongo
   NAME    = 'em-mongo'
   LIBPATH = ::File.expand_path(::File.dirname(__FILE__)) + ::File::SEPARATOR
   PATH    = ::File.dirname(LIBPATH) + ::File::SEPARATOR
-
-  class Util
-    def self.unique_id
-      BSON::ObjectID.new.to_s
-    end
-  end
 end
 
 require File.join(EM::Mongo::LIBPATH, "em-mongo/connection")
