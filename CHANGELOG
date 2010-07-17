@@ -1,3 +1,9 @@
+= 0.2.11
+
+ * Auto Reconnect on lost connection (dj2)
+ * Options handling on Em.connect (dj2)
+ * Bundler support (pkieltyka)
+
 = 0.2.10
 
  * Ruby 1.8 was broken in the last set of patches pulled in.
