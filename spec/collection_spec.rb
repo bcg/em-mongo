@@ -24,7 +24,7 @@ describe EMMongo::Collection do
     EM::Spec::Mongo.collection do |collection|
       obj = collection.insert('hello' => 'world')
       obj.keys.should include '_id'
-      obj['_id'].should be_a_kind_of(BSON::ObjectID)
+      obj['_id'].should be_a_kind_of(BSON::ObjectId)
       EM::Spec::Mongo.close
     end
   end
