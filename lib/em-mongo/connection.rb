@@ -199,7 +199,7 @@ module EM::Mongo
       # Documents
       docs = (1..number_returned).map do
         size= peek_size(@buffer)
-        buf = BSON::ByteBuffer.new(@buffer.get(size))
+        buf = @buffer.get(size)
         BSON::BSON_CODER.deserialize(buf)
       end
       [response_to,docs]
