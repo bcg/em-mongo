@@ -33,6 +33,6 @@ end
 desc "rspec tests"
 task :spec do
   MongoRunner.run do
-    system "bundle exec spec #{spec.test_files.join(' ')} -b -fs -color"
+    system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
   end
 end
