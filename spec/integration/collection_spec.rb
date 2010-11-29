@@ -12,11 +12,35 @@ describe EMMongo::Collection do
    done
   end
 
+  it 'should insert an object with a custom _id' do
+   @conn, @coll = connection_and_collection
+
+   obj = @coll .insert('_id' => 1234, 'hello' => 'world')
+   obj.keys.should include '_id'
+   obj['_id'].should == 1234
+   r = @coll.find({"hello" => "world"},{}) do |res|
+     res.size.should >= 1
+     res[0]['_id'].should == 1234
+     done
+   end
+  end
+
   it 'should find an object by attribute' do
    @conn, @coll = connection_and_collection
     
    @coll.insert("hello" => 'world')
    r = @coll.find({"hello" => "world"},{}) do |res|
+     res.size.should >= 1
+     res[0]["hello"].should == "world"
+     done
+   end
+  end
+
+  it 'should find an object by symbol' do
+   @conn, @coll = connection_and_collection
+    
+   @coll.insert('hello' => 'world')
+   r = @coll.find({:hello => "world"},{}) do |res|
      res.size.should >= 1
      res[0]["hello"].should == "world"
      done
