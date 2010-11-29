@@ -6,6 +6,6 @@ gem "bson_ext"
 
 group :test do
   gem "rspec"
-  gem "em-spec"
+  gem "em-spec", :git => "https://github.com/mloughran/em-spec.git"
 end
 
