@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.description = 'EventMachine drive for MongoDB.'
 
   s.files      = Dir['lib/**/*']
-  s.test_files = Dir['spec/**/*']
+  s.test_files = Dir['spec/integration/**/*']
 
   s.rdoc_options  = ["--charset=UTF-8"]
   s.require_paths = ["lib"]

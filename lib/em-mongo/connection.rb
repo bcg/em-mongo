@@ -118,9 +118,10 @@ module EM::Mongo
       @retries       = 0
       @responses     = {}
       @is_connected  = false
-      @host          = options[:host] || DEFAULT_IP
-      @port          = options[:port] || DEFAULT_PORT
-      @on_unbind     = options[:unbind_cb] || proc {}
+      @host          = options[:host]        || DEFAULT_IP
+      @port          = options[:port]        || DEFAULT_PORT
+      @on_unbind     = options[:unbind_cb]   || proc {}
+      @reconnect_in  = options[:reconnect_in]|| false
 
       @on_close = proc {
         raise Error, "failure with mongodb server #{@host}:#{@port}"
@@ -130,7 +131,7 @@ module EM::Mongo
     end
 
     def self.connect(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = nil)
-      opt = {:host => host, :port => port, :timeout => timeout}.merge(opts)
+      opt = {:host => host, :port => port, :timeout => timeout, :reconnect_in => false}.merge(opts)
       EM.connect(host, port, self, opt)
     end
 
@@ -214,19 +215,21 @@ module EM::Mongo
 
       set_deferred_status(nil)
 
-      if @retries >= MAX_RETRIES
+      if @reconnect_in
+        EM.add_timer(@reconnect_in) { reconnect(@host, @port) }
+      elsif @on_unbind and @retries >= MAX_RETRIES
         @on_unbind.call
         return
       end
 
       @retries += 1
-      EM.add_timer(5) { reconnect(@host, @port) }
+      
     end
 
     def close
       @on_close = proc { yield if block_given? }
       if @responses.empty?
-        close_connection
+        close_connection_after_writing
       else
         @close_pending = true
       end
@@ -253,6 +256,7 @@ module EM::Mongo
       @em_connection.close
     end
   end
+
   class Connection
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})
       @em_connection = EMConnection.connect(host, port, timeout, opts)

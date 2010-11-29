@@ -4,86 +4,35 @@ require 'rake/gempackagetask'
 
 require 'spec/rake/spectask'
 require 'fileutils'
+require 'tmpdir'
 
 task :default => :spec
 
 class MongoRunner
-  
-  def self.mongo_db_dir
-    "/tmp/mongo_db/"
+  def self.run 
+    dir = Dir.tmpdir 
+    FileUtils.rm_r Dir.glob("#{dir}/*")
+    pidf = "#{dir}/mongod.pid"
+    logf = "#{dir}/mongo.log"
+    begin
+      system "mongod run --fork -vvvvvvv --dbpath #{dir} --pidfilepath #{pidf} --logpath #{logf} >> /dev/null "
+      yield if block_given?
+    ensure
+      Process.kill("KILL", File.read(pidf).to_i)
+      FileUtils.rm_r Dir.glob("#{dir}/*")
+    end
   end
-  
-  def self.dtach_socket
-    '/tmp/mongo.dtach'
-  end
-
-  def self.init
-    FileUtils.mkdir(mongo_db_dir) if not File.exists?(mongo_db_dir)
-    FileUtils.rm_r Dir.glob("#{mongo_db_dir}/*")
-    self.stop if File.exists?("#{mongo_db_dir}/mongod.lock")
-  end
- 
-  def self.running?
-    File.exists? dtach_socket
-  end
-  
-  def self.start
-    self.init
-    puts 'Detach with Ctrl+\  Re-attach with rake mongodb:attach'
-    sleep 2
-    exec "dtach -A #{dtach_socket} mongod run -vvvvvvv --objcheck --dbpath #{mongo_db_dir}"
-  end
-  
-  def self.start_detached
-    self.init
-    system "dtach -n #{dtach_socket} mongod run -vvvvvvvv --objcheck --logpath #{mongo_db_dir}/../mongodb.log --dbpath #{mongo_db_dir}"
-  end
-  
-  def self.attach
-    exec "dtach -a #{dtach_socket}"
-  end
-  
-  def self.stop
-    system "cat #{mongo_db_dir}/mongod.lock | xargs kill"
-  end
- 
 end
 
 spec = eval(File.read('em-mongo.gemspec'))
+
 Rake::GemPackageTask.new(spec) do |pkg|
   pkg.gem_spec = spec
 end
 
-namespace :mongodb do
-  desc "start mongodb"
-  task :start do
-    MongoRunner.start
-  end
-
-  desc "start mongodb in the background"
-  task :start_detached do
-    MongoRunner.start_detached
-  end
-
-  desc "stop mongodb"
-  task :stop do
-    MongoRunner.stop
-  end
-end
-
 desc "rspec tests"
 task :spec do
-  exec "bundle exec spec spec/*.rb -b -fs -color"
-end
-
-desc "run specs against mongodb"
-task :test do
-  begin
-    Rake::Task["mongodb:start_detached"].invoke
-    sleep 1
-    Rake::Task["spec"].invoke
-  ensure
-    Rake::Task["mongodb:stop"].invoke 
+  MongoRunner.run do
+    system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
   end
 end
-
