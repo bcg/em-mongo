@@ -6,6 +6,14 @@ require 'spec/rake/spectask'
 require 'fileutils'
 require 'tmpdir'
 
+def em_mongo_version
+  File.read("VERSION").strip
+end
+
+def root_dir
+  File.dirname(__FILE__)
+end
+
 task :default => 'spec:integration:default'
 
 class MongoRunner
@@ -20,8 +28,10 @@ class MongoRunner
       system "mongod run #{auth} --fork -vvvvvvv --dbpath #{dir} --pidfilepath #{pidf} --logpath #{logf} >> /dev/null "
       yield if block_given?
     ensure
-      Process.kill("KILL", File.read(pidf).to_i)
-      FileUtils.rm_r Dir.glob("#{dir}/*") unless options[:noclean]
+      if File.exists?(pidf) and File.read(pidf).to_i != 0
+        Process.kill("KILL", File.read(pidf).to_i)
+        FileUtils.rm_r Dir.glob("#{dir}/*") unless options[:noclean]
+      end
     end
   end
 end
@@ -36,18 +46,54 @@ namespace :gem do
 
   desc "build gem"
   task :build do
-    system "gem build em-mongo.gemspec"
+    puts "Building em-mongo #{em_mongo_version}"
+    system "gem build em-mongo.gemspec -q"
   end
 
   desc "release gem"
   task :release do
-    v = File.read("VERSION").strip
-    system "gem push em-mongo-#{v}.gem"
+    system "gem push em-mongo-#{em_mongo_version}.gem"
   end
 
 end
 
 namespace :spec do
+  
+  namespace :gem do
+
+    desc "bundler tests"
+    task :bundler do
+      MongoRunner.run do
+        print "Testing Bundler integration ... "
+        if system "cd spec/gem && bundle install --quiet && ./bundler.rb"
+          puts "SUCCESS."
+        else
+          puts "FAILURE."
+        end
+      end
+    end
+
+    desc "rubygems tests"
+    task :rubygems do
+      MongoRunner.run do
+        print "Testing Rubygems integration ... "
+        steps =[]
+        steps << "cd spec/gem"
+        steps << "gem uninstall -a em-mongo >/dev/null"
+        steps << "gem install #{root_dir}/em-mongo-#{em_mongo_version}.gem >/dev/null"
+        steps << "./rubygems.rb"
+        if system steps.join(" && ")
+          puts "SUCCESS."
+        else
+          puts "FAILURE."
+        end
+      end
+    end
+
+    desc "all gem tests"
+    task :all => [:bundler, :rubygems]
+  end
+
   namespace :integration do
 
     desc "default tests"
@@ -73,4 +119,7 @@ namespace :spec do
     end
 
   end
+
+  desc "release testing"
+  task :release => ['spec:integration:default','gem:build','spec:gem:bundler','spec:gem:rubygems']
 end

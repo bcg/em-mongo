@@ -1,3 +1,8 @@
+- 0.3.2
+
+ * Added spec/gem to help with release testing
+ * Added some Rakefile helpers
+
 - 0.3.1
 
  * Added VERSION to the gem. It was breaking the new EM::Mongo::Version module.

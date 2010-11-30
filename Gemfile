@@ -1,10 +1,8 @@
 source :gemcutter
 
-gem "eventmachine"
-gem "bson"
-gem "bson_ext"
+gemspec
 
-group :test do
+group :development do
   gem "rspec"
   gem "em-spec", :git => "https://github.com/mloughran/em-spec.git"
 end
