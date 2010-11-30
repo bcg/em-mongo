@@ -32,8 +32,24 @@ Rake::GemPackageTask.new(spec) do |pkg|
   pkg.gem_spec = spec
 end
 
+namespace :gem do
+
+  desc "build gem"
+  task :build do
+    system "gem build em-mongo.gemspec"
+  end
+
+  desc "release gem"
+  task :release do
+    v = File.read("VERSION").strip
+    system "gem push em-mongo-#{v}.gem"
+  end
+
+end
+
 namespace :spec do
   namespace :integration do
+
     desc "default tests"
     task :default do
       MongoRunner.run do
@@ -51,9 +67,10 @@ namespace :spec do
       end
     end
 
-    desc "provide your own mongo instance"
+    desc "default tests, but don't start mongodb for me"
     task :no_mongo do
       system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
     end
+
   end
 end
