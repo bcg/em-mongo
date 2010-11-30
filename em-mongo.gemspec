@@ -9,6 +9,8 @@ Gem::Specification.new do |s|
   s.date    = '2010-06-21'
 
   s.description = 'EventMachine driver for MongoDB.'
+  s.homepage = 'http://github.com/bcg/em-mongo'
+  s.rubyforge_project = 'em-mongo'
 
   s.files      = Dir['VERSION', 'lib/**/*']
   s.test_files = Dir['spec/integration/**/*']
@@ -18,7 +20,7 @@ Gem::Specification.new do |s|
 
   s.rubygems_version = '1.3.6'
 
-  s.summary = 'EventMachine driver for MongoDB.'
+  s.summary = 'An EventMachine driver for MongoDB.'
 
   s.add_dependency 'eventmachine', ['>= 0.12.10'] 
   s.add_dependency 'bson', ['>= 0.20.1'] 
