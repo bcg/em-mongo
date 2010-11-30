@@ -79,7 +79,11 @@ namespace :spec do
         print "Testing Rubygems integration ... "
         steps =[]
         steps << "cd spec/gem"
+<<<<<<< HEAD
         steps << "gem uninstall -a em-mongo >/dev/null"
+=======
+        steps << "gem uninstall em-mongo >/dev/null"
+>>>>>>> 7d17a6a3967a7f135f29bed82b224e1959312655
         steps << "gem install #{root_dir}/em-mongo-#{em_mongo_version}.gem >/dev/null"
         steps << "./rubygems.rb"
         if system steps.join(" && ")
