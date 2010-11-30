@@ -8,9 +8,9 @@ Gem::Specification.new do |s|
   s.email   = 'brenden.grace@gmail.com'
   s.date    = '2010-06-21'
 
-  s.description = 'EventMachine drive for MongoDB.'
+  s.description = 'EventMachine driver for MongoDB.'
 
-  s.files      = Dir['lib/**/*']
+  s.files      = Dir['VERSION', 'lib/**/*']
   s.test_files = Dir['spec/integration/**/*']
 
   s.rdoc_options  = ["--charset=UTF-8"]
@@ -20,7 +20,8 @@ Gem::Specification.new do |s|
 
   s.summary = 'EventMachine driver for MongoDB.'
 
-  s.add_dependency("eventmachine", ['>= 0.12.10'])
-  s.add_dependency("bson", ['>= 0.20.1'])
+  s.add_dependency 'eventmachine', ['>= 0.12.10'] 
+  s.add_dependency 'bson', ['>= 0.20.1'] 
+  s.add_dependency 'bson_ext', ['>= 0.20.1'] 
 
 end
