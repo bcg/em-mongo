@@ -1,3 +1,12 @@
+- 0.3
+
+ * Refactored test suite
+ * Followed ruby-mongo-driver's _id convention. This will BREAK your apps. 
+ See: http://twitter.com/#!/brendengrace/status/9445253316608000
+ * Split out database.rb and pulled in support.rb and conversons.rb from
+ ruby-mongo-driver
+ * Added initial authentication support to to EM::Mongo::Database
+
 - 0.2.14
 
  * .close was reconnecting automatically so now its configureable

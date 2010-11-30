@@ -4,69 +4,79 @@ describe EMMongo::Collection do
   include EM::Spec
 
   it 'should insert an object' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
 
-   obj = @coll .insert('hello' => 'world')
-   obj.keys.should include '_id'
-   obj['_id'].should be_a_kind_of(BSON::ObjectId)
-   done
+    doc = {'hello' => 'world'}
+    id = @coll.insert(doc)
+    id.should be_a_kind_of(BSON::ObjectId)
+    doc[:_id].should be_a_kind_of(BSON::ObjectId)
+    done
   end
 
   it 'should insert an object with a custom _id' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
 
-   obj = @coll .insert('_id' => 1234, 'hello' => 'world')
-   obj.keys.should include '_id'
-   obj['_id'].should == 1234
-   r = @coll.find({"hello" => "world"},{}) do |res|
-     res.size.should >= 1
-     res[0]['_id'].should == 1234
-     done
-   end
+    id = @coll.insert(:_id => 1234, 'hello' => 'world')
+    id.should == 1234
+    @coll.first({'hello' => 'world'}) do |res|
+      res['_id'].should == 1234
+      done
+    end
   end
 
   it 'should find an object by attribute' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
     
-   @coll.insert("hello" => 'world')
-   r = @coll.find({"hello" => "world"},{}) do |res|
-     res.size.should >= 1
-     res[0]["hello"].should == "world"
-     done
-   end
+    @coll.insert("hello" => 'world')
+    @coll.find({"hello" => "world"},{}) do |res|
+      res.size.should >= 1
+      res[0]["hello"].should == "world"
+      done
+    end
+  end
+
+  it 'should take strings or symbols for hashes' do
+    @conn, @coll = connection_and_collection
+
+    obj = @coll.insert({:_id => 1234, 'foo' => 'bar', :hello => 'world'})
+    @coll.first({:_id => 1234},{}) do |res|
+      res['hello'].should == 'world' 
+      res['foo'].should == 'bar'
+      done
+    end
   end
 
   it 'should find an object by symbol' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
     
-   @coll.insert('hello' => 'world')
-   r = @coll.find({:hello => "world"},{}) do |res|
-     res.size.should >= 1
-     res[0]["hello"].should == "world"
-     done
-   end
+    @coll.insert('hello' => 'world')
+    @coll.find({:hello => "world"},{}) do |res|
+      res.size.should >= 1
+      res[0]["hello"].should == "world"
+      done
+    end
   end
 
   it 'should find an object by id' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
     
-   obj = @coll.insert('hello' => 'world')
-   @coll.find({'_id' => obj['_id']},{}) do |res|
-     res.size.should >= 1
-     res[0]['hello'].should == "world"
-     done
-   end
+    id = @coll.insert('hello' => 'world')
+    @coll.find({:_id => id},{}) do |res|
+      res.size.should >= 1
+      res[0]['hello'].should == "world"
+      done
+    end
   end
 
   it 'should find all objects' do
-   @conn, @coll = connection_and_collection
+    @conn, @coll = connection_and_collection
 
-   @coll.insert('one' => 'one')
-   @coll.insert('two' => 'two')
-   @coll.find do |res|
-     res.size.should >= 2
-     done
-   end
+    @coll.insert('one' => 'one')
+    @coll.insert('two' => 'two')
+    @coll.find do |res|
+      res.size.should >= 2
+      done
+    end
   end
 
   it 'should find large sets of objects' do
@@ -85,9 +95,9 @@ describe EMMongo::Collection do
   it 'should update an object' do
     @conn, @coll = connection_and_collection
 
-    obj = @coll.insert('hello' => 'world')
+    id = @coll.insert('hello' => 'world')
     @coll.update({'hello' => 'world'}, {'hello' => 'newworld'})
-    @coll.find({'_id' => obj['_id']},{}) do |res|
+    @coll.find({:_id => id},{}) do |res|
       res[0]['hello'].should == 'newworld'
       done
     end
@@ -96,9 +106,9 @@ describe EMMongo::Collection do
   it 'should update an object wxith $inc' do
     @conn, @coll = connection_and_collection
 
-    obj = @coll.insert('hello' => 'world')
+    id = @coll.insert('hello' => 'world')
     @coll.update({'hello' => 'world'}, {'$inc' => {'count' => 1}})
-    @coll.find({'_id' => obj['_id']},{}) do |res|
+    @coll.find({:_id => id},{}) do |res|
       res.first['hello'].should == 'world'
       res.first['count'].should == 1
       done
@@ -108,8 +118,8 @@ describe EMMongo::Collection do
   it 'should remove an object' do
     @conn, @coll = connection_and_collection
 
-    obj = @coll.insert('hello' => 'world')
-    @coll.remove('_id' => obj['_id'])
+    id = @coll.insert('hello' => 'world')
+    @coll.remove(:_id => id)
     @coll.find({'hello' => "world"}) do |res|
       res.size.should == 0
       done
@@ -153,9 +163,10 @@ describe EMMongo::Collection do
       'regex' => /abc$/ix
     }
     retobj = @coll.insert(obj)
-    @coll.find({'_id' => obj['_id']}) do |ret|
+    @coll.find({:_id => obj[:_id]}) do |ret|
       ret.size.should == 1
       ret[0].each_key do |key|
+        next if key == '_id'
         ret[0][key].should == obj[key]
       end
       done
@@ -209,7 +220,7 @@ describe EMMongo::Collection do
   it 'should handle multiple pending queries' do
     @conn, @coll = connection_and_collection
     
-    id = @coll.insert("foo" => "bar")['_id']
+    id = @coll.insert("foo" => "bar")
     received = 0
 
     10.times do |n|

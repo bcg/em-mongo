@@ -3,7 +3,6 @@
 An EventMachine client for MongoDB. Originally based on RMongo. This client aims to be as api compatible
 with mongo-ruby-driver as possible.
 
-
 == Examples
 
    require 'em-mongo'
@@ -12,18 +11,19 @@ with mongo-ruby-driver as possible.
      db = EM::Mongo::Connection.new.db('db')
      collection = db.collection('test')
      EM.next_tick do
-       hash = collection.insert(Hash.new)
-       found = collection.find('_id' => hash['_id']) do |res|
+       doc = {"hello" => "world"}
+       id = collection.insert(doc)
+       collection.find('_id' => id]) do |res|
          puts res.inspect
          EM.stop
        end
-       collection.remove(hash)
+       collection.remove(doc)
      end
    end
 
 == Todo
 
-1. Refactor unit tests and make them more comprehensive
+1. -Refactor unit tests and make them more comprehensive-
 2. collection.index
 3. Server side aggregate functions (reference[http://www.mongodb.org/display/DOCS/Aggregation#Aggregation-Distinct])
 

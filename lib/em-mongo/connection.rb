@@ -239,25 +239,10 @@ module EM::Mongo
 
 end
 
-# Make EM::Mongo look like mongo-ruby-driver
 module EM::Mongo
-  class Database
-    def initialize(name = DEFAULT_DB, connection = nil)
-      @db_name = name
-      @em_connection = connection || EM::Mongo::Connection.new
-      @collection = nil
-    end
-
-    def collection(name = DEFAULT_NS)
-      @collection = EM::Mongo::Collection.new(@db_name, name, @em_connection)
-    end
-
-    def close
-      @em_connection.close
-    end
-  end
 
   class Connection
+
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})
       @em_connection = EMConnection.connect(host, port, timeout, opts)
       @db = {}

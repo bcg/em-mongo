@@ -25,10 +25,10 @@ module EM::Mongo
       end
     end
 
-    def insert(obj)
-      obj['_id'] ||= BSON::ObjectId.new
-      @connection.insert(@name, obj)
-      obj
+    def insert(doc)
+      sanitize_id!(doc)
+      @connection.insert(@name, doc)
+      doc[:_id] # mongo-ruby-driver returns ID
     end
 
     def update(selector, updater, opts={})
@@ -36,9 +36,36 @@ module EM::Mongo
       true
     end
 
+    # XXX Missing tests
+    def save(doc, opts={})
+      id = has_id?(doc)
+      sanitize_id!(doc)
+      if id
+        update({:_id => id}, doc, :upsert => true)
+        id
+      else
+        insert(doc)
+      end
+    end
+
     def remove(obj = {})
       @connection.delete(@name, obj)
       true
+    end
+
+    private
+
+    def has_id?(doc)
+      # mongo-ruby-driver seems to take :_id over '_id' for some reason
+      id = doc[:_id] || doc['_id']
+      return id if id
+      nil
+    end
+
+    def sanitize_id!(doc)
+      doc[:_id] = has_id?(doc) || BSON::ObjectId.new
+      doc.delete('_id')
+      doc
     end
 
   end
