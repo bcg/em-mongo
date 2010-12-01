@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require "rubygems"
+require "eventmachine"
 require "em-mongo"
 
 $return = -1

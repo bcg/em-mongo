@@ -1,8 +1,4 @@
 
-require 'rake'
-require 'rake/gempackagetask'
-
-require 'spec/rake/spectask'
 require 'fileutils'
 require 'tmpdir'
 
@@ -38,8 +34,12 @@ end
 
 spec = eval(File.read('em-mongo.gemspec'))
 
-Rake::GemPackageTask.new(spec) do |pkg|
-  pkg.gem_spec = spec
+namespace :bundle do
+  task :install do
+    if `bundle check` =~ /bundle install/
+      system("bundle install --path vendor/gems")
+    end
+  end
 end
 
 namespace :gem do
@@ -79,8 +79,11 @@ namespace :spec do
         print "Testing Rubygems integration ... "
         steps =[]
         steps << "cd spec/gem"
-        steps << "gem uninstall -a em-mongo >/dev/null"
-        steps << "gem install #{root_dir}/em-mongo-#{em_mongo_version}.gem >/dev/null"
+        
+        if `gem list -i em-mongo` == 'true'
+          steps << "gem uninstall --force -a em-mongo >/dev/null"
+        end
+        steps << "gem install #{root_dir}/em-mongo-#{em_mongo_version}.gem >/dev/null "
         steps << "./rubygems.rb"
         if system steps.join(" && ")
           puts "SUCCESS."
@@ -97,14 +100,14 @@ namespace :spec do
   namespace :integration do
 
     desc "default tests"
-    task :default do
+    task :default => ['bundle:install'] do
       MongoRunner.run do
         system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
       end
     end
 
     desc "exhaustive tests"
-    task :exhaustive do
+    task :exhaustive => ['bundle:install'] do
       MongoRunner.run({:noclean => true}) do
         system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
       end
@@ -114,7 +117,7 @@ namespace :spec do
     end
 
     desc "default tests, but don't start mongodb for me"
-    task :no_mongo do
+    task :no_mongo => ['bundle:install'] do
       system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
     end
 

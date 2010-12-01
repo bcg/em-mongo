@@ -1,3 +1,8 @@
+- 0.3.3
+ 
+ * Yank Bundler out lib/em-mongo.rb and push it into spec/spec_helper.rb
+ * Numerous Rakefile changes
+
 - 0.3.2
 
  * Added spec/gem to help with release testing

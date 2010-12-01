@@ -1,15 +1,7 @@
 begin
-  require "rubygems"
-  require "bundler"
-  Bundler.setup(:default)
+  require "bson_ext"
 rescue LoadError
-ensure
-  require "eventmachine"
-  begin
-    require "bson_ext"
-  rescue LoadError
-    require "bson"
-  end
+  require "bson"
 end
 
 module EM::Mongo

@@ -3,6 +3,7 @@
 require "rubygems"
 require "bundler"
 Bundler.setup(:default)
+require "eventmachine"
 require "em-mongo"
 
 $return = -1

@@ -1,3 +1,13 @@
+require "rubygems"
+require "bundler"
+Bundler.setup(:default, :development)
+require "eventmachine"
+begin
+  require "bson_ext"
+rescue LoadError
+  require "bson"
+end
+
 require File.expand_path('../lib/em-mongo', File.dirname(__FILE__))
 
 require "em-spec/rspec"
