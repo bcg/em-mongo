@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
 
   s.authors = ['bcg']
   s.email   = 'brenden.grace@gmail.com'
-  s.date    = "2010-11-30"
+  s.date    = "2010-12-01"
 
   s.description = 'EventMachine driver for MongoDB.'
   s.homepage = 'http://github.com/bcg/em-mongo'

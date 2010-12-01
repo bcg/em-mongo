@@ -1,3 +1,4 @@
+require "eventmachine"
 begin
   require "bson_ext"
 rescue LoadError

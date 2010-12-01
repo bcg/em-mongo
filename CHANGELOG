@@ -1,3 +1,10 @@
+- 0.3.4
+ 
+ * Silly regression issue. Added em requires to tests and so I missed it when
+   I yanked it from lib/em-mongo.rb
+ * dynamix found *another* regression in the new database code.
+   (see: https://github.com/bcg/em-mongo/pull/16)
+
 - 0.3.3
  
  * Yank Bundler out lib/em-mongo.rb and push it into spec/spec_helper.rb
