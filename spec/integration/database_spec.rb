@@ -21,7 +21,17 @@ describe EMMongo::Database do
       res.should == true
       done
     end
-  end 
-
+  end  
+  
+  it 'should cache collections correctly' do
+    @conn = EM::Mongo::Connection.new
+    @db = @conn.db
+    a = @db.collection('first_collection')
+    b = @db.collection('second_collection')
+    a.should_not == b                      
+    @db.collection('first_collection').should == a
+    @db.collection('second_collection').should == b            
+    done
+  end
 
 end

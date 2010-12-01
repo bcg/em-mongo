@@ -2,7 +2,6 @@ require File.expand_path('spec_helper', File.dirname(__FILE__) + '/../')
 
 describe EMMongo::Connection do
   include EM::Spec
-  include EM::Mongo
 
   it 'should connect' do
     @conn = EMMongo::Connection.new
@@ -29,7 +28,7 @@ describe EMMongo::Connection do
   end
 
   it 'should reconnect' do
-    @conn = EMMongo::Connection.new(DEFAULT_IP, DEFAULT_PORT, nil, {:reconnect_in => 0.5})
+    @conn = EMMongo::Connection.new(EM::Mongo::DEFAULT_IP, EM::Mongo::DEFAULT_PORT, nil, {:reconnect_in => 0.5})
     EM.add_timer(0.1) do
       @conn.close
     end

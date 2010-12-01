@@ -237,10 +237,6 @@ module EM::Mongo
 
   end
 
-end
-
-module EM::Mongo
-
   class Connection
 
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})

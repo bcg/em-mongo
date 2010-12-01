@@ -16,7 +16,7 @@ module EM::Mongo
     end
 
     def collection(name = EM::Mongo::DEFAULT_NS)
-      @collections[@db_name] ||= EM::Mongo::Collection.new(@db_name, name, @em_connection)
+      @collections[name] ||= EM::Mongo::Collection.new(@db_name, name, @em_connection)
     end
 
     def connection
