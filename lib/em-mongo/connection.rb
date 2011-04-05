@@ -99,17 +99,25 @@ module EM::Mongo
       send_command(message.to_s, req_id)
     end
 
-    def find(collection_name, skip, limit, query, fields, &blk)
+    def find(collection_name, skip, limit, order, query, fields, &blk)
       message = BSON::ByteBuffer.new
       message.put_int(RESERVED) # query options
       BSON::BSON_RUBY.serialize_cstr(message, collection_name)
       message.put_int(skip)
       message.put_int(limit)
+      query = order.nil? ? query : construct_query_spec(query, order)
       message.put_array(BSON::BSON_CODER.serialize(query, false).to_a)
       message.put_array(BSON::BSON_CODER.serialize(fields, false).to_a) if fields
       req_id = new_request_id
       message.prepend!(message_headers(OP_QUERY, req_id, message))
       send_command(message.to_s, req_id, &blk)
+    end
+
+    def construct_query_spec(query, order)
+      spec = BSON::OrderedHash.new
+      spec['$query']    = query
+      spec['$orderby']  = Mongo::Support.format_order_clause(order) if order
+      spec
     end
 
     # EM hooks
