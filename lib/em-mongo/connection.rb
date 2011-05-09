@@ -215,23 +215,26 @@ module EM::Mongo
     end
 
     def unbind
-      @is_connected = false
+      if @is_connected
+        @responses.values.each { |blk| blk.call(:disconnected) }
 
-      # XXX do we need to fail the responses here?
-      @request_id = 0
-      @responses = {}
+        @request_id = 0
+        @responses = {}
+      end
+
+      @is_connected = false
 
       set_deferred_status(nil)
 
-      if @reconnect_in
+      if @reconnect_in && @retries < MAX_RETRIES
         EM.add_timer(@reconnect_in) { reconnect(@host, @port) }
-      elsif @on_unbind and @retries >= MAX_RETRIES
+      elsif @on_unbind
         @on_unbind.call
-        return
+      else
+        raise "Connection to Mongo Lost"
       end
 
       @retries += 1
-      
     end
 
     def close
