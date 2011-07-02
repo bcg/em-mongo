@@ -18,7 +18,7 @@
 # limitations under the License.
 # ++
 
-module Mongo
+module EM::Mongo
   # Generic Mongo Ruby Driver exception class.
   class MongoRubyError < StandardError; end
 

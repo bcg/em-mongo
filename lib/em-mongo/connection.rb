@@ -5,6 +5,22 @@ module EM::Mongo
   DEFAULT_NS         = "ns"
   DEFAULT_QUERY_DOCS = 101
 
+  OP_REPLY        = 1
+  OP_MSG          = 1000
+  OP_UPDATE       = 2001
+  OP_INSERT       = 2002
+  OP_QUERY        = 2004
+  OP_GET_MORE     = 2005
+  OP_DELETE       = 2006
+  OP_KILL_CURSORS = 2007
+
+  OP_QUERY_TAILABLE          = 2 ** 1
+  OP_QUERY_SLAVE_OK          = 2 ** 2
+  OP_QUERY_OPLOG_REPLAY      = 2 ** 3
+  OP_QUERY_NO_CURSOR_TIMEOUT = 2 ** 4
+  OP_QUERY_AWAIT_DATA        = 2 ** 5
+  OP_QUERY_EXHAUST           = 2 ** 6
+
   class EMConnection < EM::Connection
     MAX_RETRIES = 5
 
@@ -16,12 +32,6 @@ module EM::Mongo
     include EM::Deferrable
 
     RESERVED    = 0
-    OP_REPLY    = 1
-    OP_MSG      = 1000
-    OP_UPDATE   = 2001
-    OP_INSERT   = 2002
-    OP_QUERY    = 2004
-    OP_DELETE   = 2006
 
     STANDARD_HEADER_SIZE = 16
     RESPONSE_HEADER_SIZE = 20
@@ -40,8 +50,18 @@ module EM::Mongo
       @request_id += 1
     end
 
+    def slave_ok?
+      @slave_ok
+    end
+
     # MongoDB Commands
 
+    def prepare_message(op, message)
+      req_id = new_request_id
+      message.prepend!(message_headers(op, req_id, message))
+      [req_id, message.to_s]
+    end
+    
     def message_headers(operation, request_id, message)
       headers = BSON::ByteBuffer.new
       headers.put_int(16 + message.size)
@@ -51,13 +71,14 @@ module EM::Mongo
       headers
     end
 
-    def send_command(buffer, request_id, &blk)
+    def send_command(op, message)
+      request_id, buffer = prepare_message(op, message)
+
       callback do
         send_data buffer
       end
 
-      @responses[request_id] = blk if blk
-      request_id
+      @responses[request_id] = EM::DefaultDeferrable.new
     end
 
     def insert(collection_name, documents)
@@ -67,9 +88,7 @@ module EM::Mongo
       documents = [documents] if not documents.is_a?(Array)
       documents.each { |doc| message.put_array(BSON::BSON_CODER.serialize(doc, true, true).to_a) }
 
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_INSERT, req_id, message))
-      send_command(message.to_s, req_id)
+      send_command(OP_INSERT, message)
     end
 
     def update(collection_name, selector, document, options)
@@ -84,9 +103,7 @@ module EM::Mongo
       message.put_array(BSON::BSON_CODER.serialize(selector, true, true).to_a)
       message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a)
 
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_UPDATE, req_id, message))
-      send_command(message.to_s, req_id)
+      send_command(OP_UPDATE, message)
     end
 
     def delete(collection_name, selector)
@@ -94,9 +111,7 @@ module EM::Mongo
       BSON::BSON_RUBY.serialize_cstr(message, collection_name)
       message.put_int(0)
       message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_DELETE, req_id, message))
-      send_command(message.to_s, req_id)
+      send_command(OP_DELETE, message)
     end
 
     def find(collection_name, skip, limit, order, query, fields, &blk)
@@ -108,15 +123,13 @@ module EM::Mongo
       query = order.nil? ? query : construct_query_spec(query, order)
       message.put_array(BSON::BSON_CODER.serialize(query, false).to_a)
       message.put_array(BSON::BSON_CODER.serialize(fields, false).to_a) if fields
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_QUERY, req_id, message))
-      send_command(message.to_s, req_id, &blk)
+      send_command(OP_QUERY, message).callback { |resp| blk.call(resp.docs) if blk}
     end
 
     def construct_query_spec(query, order)
       spec = BSON::OrderedHash.new
       spec['$query']    = query
-      spec['$orderby']  = Mongo::Support.format_order_clause(order) if order
+      spec['$orderby']  = EM::Mongo::Support.format_order_clause(order) if order
       spec
     end
 
@@ -130,6 +143,7 @@ module EM::Mongo
       @port          = options[:port]        || DEFAULT_PORT
       @on_unbind     = options[:unbind_cb]   || proc {}
       @reconnect_in  = options[:reconnect_in]|| false
+      @slave_ok      = options[:slave_ok]    || false
 
       @on_close = proc {
         raise Error, "failure with mongodb server #{@host}:#{@port}"
@@ -172,9 +186,9 @@ module EM::Mongo
 
       @buffer.rewind
       while message_received?(@buffer)
-        response_to, docs= next_response
-        callback = @responses.delete(response_to)
-        callback.call(docs) if callback
+        response = next_response
+        callback = @responses.delete(response.response_to)
+        callback.succeed(response)
       end
 
       if @buffer.more?
@@ -190,33 +204,12 @@ module EM::Mongo
     end
 
     def next_response()
-
-      # Header
-      size        = @buffer.get_int
-      request_id  = @buffer.get_int
-      response_to = @buffer.get_int
-      op          = @buffer.get_int
-      #puts "message header #{size} #{request_id} #{response_to} #{op}"
-
-      # Response Header
-      result_flags     = @buffer.get_int
-      cursor_id        = @buffer.get_long
-      starting_from    = @buffer.get_int
-      number_returned  = @buffer.get_int
-      #puts "response header #{result_flags} #{cursor_id} #{starting_from} #{number_returned}"
-
-      # Documents
-      docs = (1..number_returned).map do
-        size= peek_size(@buffer)
-        buf = @buffer.get(size)
-        BSON::BSON_CODER.deserialize(buf)
-      end
-      [response_to,docs]
+      ServerResponse.new(@buffer, self)
     end
 
     def unbind
       if @is_connected
-        @responses.values.each { |blk| blk.call(:disconnected) }
+        @responses.values.each { |resp| resp.fail(:disconnected) }
 
         @request_id = 0
         @responses = {}
@@ -256,7 +249,7 @@ module EM::Mongo
     end
 
     def db(name = DEFAULT_DB)
-      @db[name] ||= EM::Mongo::Database.new(name, @em_connection)
+      @db[name] ||= EM::Mongo::Database.new(name, self)
     end
 
     def close
@@ -266,6 +259,13 @@ module EM::Mongo
     def connected?
       @em_connection.connected?
     end
+
+    def find(*args,&blk); @em_connection.find(*args,&blk); end
+    def delete(*args);@em_connection.delete(*args);end
+    def update(*args);@em_connection.update(*args);end
+    def insert(*args);@em_connection.insert(*args);end
+    def send_command(*args);@em_connection.send_command(*args);end
+    def slave_ok?;@em_connection.slave_ok?;end
 
   end
 end

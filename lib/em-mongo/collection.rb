@@ -9,6 +9,14 @@ module EM::Mongo
       @connection = connection || EM::Mongo::Connection.new
     end
 
+    def db
+      connection.db(@db)
+    end
+
+    def name
+      @ns
+    end
+
     def find(selector={}, opts={}, &blk)
       raise "find requires a block" if not block_given?
 

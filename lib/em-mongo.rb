@@ -22,5 +22,8 @@ require File.join(EM::Mongo::LIBPATH, "em-mongo/support")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/database")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/connection")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/collection")
+require File.join(EM::Mongo::LIBPATH, "em-mongo/exceptions")
+require File.join(EM::Mongo::LIBPATH, "em-mongo/cursor")
+require File.join(EM::Mongo::LIBPATH, "em-mongo/server_response")
 
 EMMongo = EM::Mongo
