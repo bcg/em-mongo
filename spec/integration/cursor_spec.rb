@@ -256,6 +256,81 @@ describe EMMongo::Cursor do
         done  
       end
     end
+
+    describe "Each" do
+      it "should iterate through each doc, returning null when done" do
+        @conn, @coll = connection_and_collection
+        5.times do |i|
+          @coll.insert("x" => i)
+        end
+        cursor = EM::Mongo::Cursor.new(@coll)
+        counter = 0
+        cursor.each do |doc|
+          if doc
+            counter+=1
+          else
+            counter.should == 5
+            done
+          end
+        end
+      end
+    end
+
+    describe "to_a" do
+      it "should return an array of all documents in a query" do
+        @conn, @coll = connection_and_collection
+        5.times do |i|
+          @coll.insert("x" => i)
+        end
+        cursor = EM::Mongo::Cursor.new(@coll).sort("x",1)
+        cursor.to_a.callback do |docs|
+          docs.length.should == 5
+          5.times do |i|
+            docs[i]["x"].should == i
+          end
+          done
+        end
+      end
+    end
+
+    describe "Transformer (a robot in disguise)" do
+      it "should set the transformer when passed in the constructor" do
+        @conn, @coll = connection_and_collection
+        transformer = Proc.new {|doc|doc}
+        cursor = EM::Mongo::Cursor.new(@coll, :transformer => transformer)
+        cursor.transformer.should == transformer
+        done
+      end
+      it "should transform docs with next" do
+        @conn, @coll = connection_and_collection
+        @coll.insert({:a=>1})
+        klass = Struct.new(:id,:a)
+        transformer = Proc.new {|doc|klass.new(doc['_id'],doc['a'])}
+        cursor = EM::Mongo::Cursor.new(@coll, :transformer => transformer)
+        cursor.next.callback do |doc|
+          doc.should be_kind_of klass
+          doc.id.should be_kind_of BSON::ObjectId
+          doc.a.should == 1
+          done
+        end
+      end
+      it "should transform docs with each" do
+        @conn, @coll = connection_and_collection
+        @coll.insert({:a=>1})
+        klass       = Struct.new(:id, :a)
+        transformer = Proc.new { |doc| klass.new(doc['_id'], doc['a']) }
+        cursor      = EM::Mongo::Cursor.new(@coll, :transformer => transformer)
+
+        cursor.each do |doc|
+          if doc
+            doc.should be_kind_of klass
+            doc.id.should be_kind_of BSON::ObjectId
+            doc.a.should == 1
+          end
+          done
+        end
+      end
+    end
   end
 
 end

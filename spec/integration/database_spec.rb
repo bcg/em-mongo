@@ -34,4 +34,31 @@ describe EMMongo::Database do
     done
   end
 
+  describe "Command" do
+    it "should fail when the database returns an error" do
+      @conn = EM::Mongo::Connection.new
+      @db = @conn.db
+      @db.command({:non_command => 1}, :check_response => true).errback do
+        done
+      end
+    end
+    it "should not fail when checkresponse is false" do
+      @conn = EM::Mongo::Connection.new
+      @db = @conn.db
+      @db.command({:non_command => 1}, :check_response => false).callback do
+        done
+      end
+    end
+    it "should succesfully execute a valid command" do
+      @conn, @coll = connection_and_collection
+      @db = @conn.db
+      @coll.insert( {:col => {:easy => "andy" } } )
+      @db.command({:collstats => @coll.name}).callback do |doc|
+        doc.should_not be_nil
+        doc["count"].should == 1
+        done
+      end
+    end
+  end
+
 end
