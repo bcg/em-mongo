@@ -264,7 +264,7 @@ module EM::Mongo
     def delete(*args);@em_connection.delete(*args);end
     def update(*args);@em_connection.update(*args);end
     def insert(*args);@em_connection.insert(*args);end
-    def send_command(*args);@em_connection.send_command(*args);end
+    def send_command  (*args);@em_connection.send_command(*args);end
     def slave_ok?;@em_connection.slave_ok?;end
 
   end

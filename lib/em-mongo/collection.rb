@@ -1,6 +1,7 @@
 module EM::Mongo
   class Collection
     attr_accessor :connection
+    attr_reader :pk_factory, :hint
 
     def initialize(db, ns, connection = nil)
       @db = db || "db"
