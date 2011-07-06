@@ -352,7 +352,8 @@ module EM::Mongo
         message = BSON::ByteBuffer.new([0, 0, 0, 0])
         message.put_int(1)
         message.put_long(@cursor_id)
-        @connection.send_command(EM::Mongo::OP_KILL_CURSORS, message).callback { response.succeed }
+        @connection.send_command(EM::Mongo::OP_KILL_CURSORS, message)
+        response.succeed
       else
         response.succeed
       end

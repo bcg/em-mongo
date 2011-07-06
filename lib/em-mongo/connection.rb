@@ -81,58 +81,6 @@ module EM::Mongo
       @responses[request_id] = EM::DefaultDeferrable.new
     end
 
-    def insert(collection_name, documents)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-
-      documents = [documents] if not documents.is_a?(Array)
-      documents.each { |doc| message.put_array(BSON::BSON_CODER.serialize(doc, true, true).to_a) }
-
-      send_command(OP_INSERT, message)
-    end
-
-    def update(collection_name, selector, document, options)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-
-      flags  = 0
-      flags += 1 if options[:upsert]
-      flags += 2 if options[:multi]
-      message.put_int(flags)
-
-      message.put_array(BSON::BSON_CODER.serialize(selector, true, true).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a)
-
-      send_command(OP_UPDATE, message)
-    end
-
-    def delete(collection_name, selector)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-      message.put_int(0)
-      message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
-      send_command(OP_DELETE, message)
-    end
-
-    def find(collection_name, skip, limit, order, query, fields, &blk)
-      message = BSON::ByteBuffer.new
-      message.put_int(RESERVED) # query options
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-      message.put_int(skip)
-      message.put_int(limit)
-      query = order.nil? ? query : construct_query_spec(query, order)
-      message.put_array(BSON::BSON_CODER.serialize(query, false).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(fields, false).to_a) if fields
-      send_command(OP_QUERY, message).callback { |resp| blk.call(resp.docs) if blk}
-    end
-
-    def construct_query_spec(query, order)
-      spec = BSON::OrderedHash.new
-      spec['$query']    = query
-      spec['$orderby']  = EM::Mongo::Support.format_order_clause(order) if order
-      spec
-    end
-
     # EM hooks
     def initialize(options={})
       @request_id    = 0
@@ -259,12 +207,8 @@ module EM::Mongo
     def connected?
       @em_connection.connected?
     end
-
-    def find(*args,&blk); @em_connection.find(*args,&blk); end
-    def delete(*args);@em_connection.delete(*args);end
-    def update(*args);@em_connection.update(*args);end
-    def insert(*args);@em_connection.insert(*args);end
-    def send_command  (*args);@em_connection.send_command(*args);end
+   
+    def send_command(*args);@em_connection.send_command(*args);end
     def slave_ok?;@em_connection.slave_ok?;end
 
   end

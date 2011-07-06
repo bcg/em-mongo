@@ -244,31 +244,37 @@ module EM::Mongo
     end
 
     def authenticate(username, password)
-      self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1}) do |res|
-        yield false if not res or not res['nonce']
+      response = EM::DefaultDeferrable.new
+      self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1}).callback do |res|
+        if not res or not res['nonce']
+          response.succeed false
+        else
+          auth                 = BSON::OrderedHash.new
+          auth['authenticate'] = 1
+          auth['user']         = username
+          auth['nonce']        = res['nonce']   
+          auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
 
-        auth                 = BSON::OrderedHash.new
-        auth['authenticate'] = 1
-        auth['user']         = username
-        auth['nonce']        = res['nonce']   
-        auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
-
-        self.collection(SYSTEM_COMMAND_COLLECTION).first(auth) do |res|
-          if EM::Mongo::Support.ok?(res)
-            yield true
-          else
-            yield res
+          self.collection(SYSTEM_COMMAND_COLLECTION).first(auth).callback do |res|
+            if EM::Mongo::Support.ok?(res)
+              response.succeed true
+            else
+              response.fail res
+            end
           end
         end
       end
+      response
     end
 
-    def add_user(username, password, &blk)
-      self.collection(SYSTEM_USER_COLLECTION).first({:user => username}) do |res|
+    def add_user(username, password)
+      response = EM::DefaultDeferrable.new
+      self.collection(SYSTEM_USER_COLLECTION).first({:user => username}).callback do |res|
         user = res || {:user => username}
         user['pwd'] = EM::Mongo::Support.hash_password(username, password)
-        yield self.collection(SYSTEM_USER_COLLECTION).save(user)
+        response.succeed self.collection(SYSTEM_USER_COLLECTION).save(user)
       end
+      response
     end
 
   end

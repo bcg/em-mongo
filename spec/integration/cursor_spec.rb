@@ -42,6 +42,21 @@ describe EMMongo::Cursor do
     end
   end
 
+  it "should allow a limit larger than the batch size" do
+    @conn, @coll = connection_and_collection
+    cursor = EM::Mongo::Cursor.new(@coll, :selector => {})
+    all = []
+    1501.times do |i|
+      @coll.insert(i.to_s => i.to_s)
+    end
+    cursor.limit(1500).to_a.callback do |docs|
+      docs.length.should == 1500
+      done
+    end
+  end
+
+
+
   it "should say if it has next" do
     @conn, @coll = connection_and_collection
     cursor = EM::Mongo::Cursor.new(@coll)

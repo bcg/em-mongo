@@ -6,7 +6,7 @@ describe EMMongo::Database do
   it 'should add a user' do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
-    @db.add_user('test', 'test') do |res| 
+    @db.add_user('test', 'test').callback do |res| 
       res.should_not == nil
       res.should be_a_kind_of(BSON::ObjectId)
       done
@@ -17,7 +17,7 @@ describe EMMongo::Database do
   it 'should authenticate a user' do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
-    @db.authenticate('test', 'test') do |res|
+    @db.authenticate('test', 'test').callback do |res|
       res.should == true
       done
     end
