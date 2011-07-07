@@ -3,6 +3,13 @@ module EM::Mongo
     attr_accessor :connection
     attr_reader :pk_factory, :hint
 
+    # Initialize a collection object.
+    #
+    # @param [String, Symbol] db the name of the database to which this collection belongs.
+    # @param [String, Symbol] ns the name of the collection
+    # @param [Connection] connection the EM::Mongo::Connection that will service this collection
+    #
+    # @return [Collection]
     def initialize(db, ns, connection = nil)
       @db = db || "db"
       @ns = ns || "ns"
@@ -10,10 +17,14 @@ module EM::Mongo
       @connection = connection || EM::Mongo::Connection.new
     end
 
+    # The database that this collection belongs to
+    # @return [EM::Mongo::Database]
     def db
       connection.db(@db)
     end
 
+    #The name of this collection
+    # @return [String]
     def name
       @ns
     end
@@ -41,7 +52,8 @@ module EM::Mongo
     # only matches documents that have a key "hello" with value "world".
     # Matches can have other keys *in addition* to "hello".
     #
-    # +find+ returns a cursor.
+    # @return [EM::Mongo::Cursor]
+    #   a cursor over the results of the query
     #
     # @param [Hash] selector
     #   a document specifying elements which must be present for a
@@ -222,7 +234,21 @@ module EM::Mongo
       true  
     end
 
-    # XXX Missing tests
+    # Save a document to this collection.
+    #
+    # @param [Hash] doc
+    #   the document to be saved. If the document already has an '_id' key,
+    #   then an update (upsert) operation will be performed, and any existing
+    #   document with that _id is overwritten. Otherwise an insert operation is performed.
+    #
+    # @return [ObjectId] the _id of the saved document.
+    #
+    # @option opts [Boolean, Hash] :safe (+false+)
+    #   run the operation in safe mode, which run a getlasterror command on the
+    #   database to report any assertion. In addition, a hash can be provided to
+    #   run an fsync and/or wait for replication of the save (>= 1.5.1). See the options
+    #   for DB#error.
+    #
     def save(doc, opts={})
       id = has_id?(doc)
       sanitize_id!(doc)
@@ -253,11 +279,7 @@ module EM::Mongo
     # @example remove only documents that have expired:
     #   users.remove({:expire => {"$lte" => Time.now}})
     #
-    # @return [Hash, true] Returns a Hash containing the last error object if running in safe mode.
-    #   Otherwise, returns true.
-    #
-    # @raise [Mongo::OperationFailure] an exception will be raised iff safe mode is enabled
-    #   and the operation fails.
+    # @return [true] Returns true.
     #
     # @see DB#remove for options that can be passed to :safe.
     #
@@ -413,7 +435,7 @@ module EM::Mongo
       response
     end
 
-     # Perform a group aggregation.
+    # Perform a group aggregation.
     #
     # @param [Hash] opts the options for this group operation. The minimum required are :initial
     #   and :reduce.
@@ -483,6 +505,13 @@ module EM::Mongo
     end
     alias :size :count
 
+    # Return stats on the collection. Uses MongoDB's collstats command.
+    #
+    # @return [Hash]
+    def stats
+      @db.command({:collstats => @name})
+    end
+
     protected
 
     def normalize_hint_fields(hint)
@@ -499,14 +528,6 @@ module EM::Mongo
         h
       end
     end
-
-    # Return stats on the collection. Uses MongoDB's collstats command.
-    #
-    # @return [Hash]
-    def stats
-      @db.command({:collstats => @name})
-    end
-
 
     private
 

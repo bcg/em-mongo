@@ -8,6 +8,11 @@ module EM::Mongo
     SYSTEM_JS_COLLECTION = "system.js"
     SYSTEM_COMMAND_COLLECTION = "$cmd"
 
+    # @param [String] name the database name.
+    # @param [EM::Mongo::Connection] connection a connection object pointing to MongoDB. Note
+    #   that databases are usually instantiated via the Connection class. See the examples below.
+    #
+    # @core databases constructor_details
     def initialize(name = DEFAULT_DB, connection = nil)
       @db_name = name
       @em_connection = connection || EM::Mongo::Connection.new
@@ -15,18 +20,25 @@ module EM::Mongo
       @collections = {}
     end
 
+    # Get a collection by name.
+    #
+    # @param [String, Symbol] name the collection name.
+    #
+    # @return [EM::Mongo::Collection]
     def collection(name = EM::Mongo::DEFAULT_NS)
       @collections[name] ||= EM::Mongo::Collection.new(@db_name, name, @em_connection)
     end
 
+    # Get the connection associated with this database
+    #
+    # @return [EM::Mongo::Connection]
     def connection
       @em_connection
     end
 
-    def close
-      @em_connection.close
-    end
-
+    #Get the name of this database
+    #
+    # @return [String]
     def name
       @db_name
     end
@@ -49,7 +61,7 @@ module EM::Mongo
 
     # Get an array of Collection instances, one for each collection in this database.
     #
-    # @return [Array<Mongo::Collection>]
+    # @return [Array<EM::Mongo::Collection>]
     def collections
       response = EM::DefaultDeferrable.new
       name_resp = collection_names
@@ -68,7 +80,7 @@ module EM::Mongo
     #
     # @param [String] coll_name return info for the specifed collection only.
     #
-    # @return [Mongo::Cursor]
+    # @return [EM::Mongo::Cursor]
     def collections_info(coll_name=nil)
       selector = {}
       selector[:name] = full_collection_name(coll_name) if coll_name
@@ -96,7 +108,7 @@ module EM::Mongo
     #   either we're in +strict+ mode and the collection
     #   already exists or collection creation fails on the server.
     #
-    # @return [Mongo::Collection]
+    # @return [EM::Mongo::Collection]
     def create_collection(name)
       response = EM::DefaultDeferrable.new
       names_resp = collection_names
@@ -257,6 +269,17 @@ module EM::Mongo
       response
     end
 
+    # Authenticate with the given username and password. Note that mongod
+    # must be started with the --auth option for authentication to be enabled.
+    #
+    # @param [String] username
+    # @param [String] password
+    #
+    # @return [Boolean]
+    #
+    # @raise [AuthenticationError]
+    #
+    # @core authenticate authenticate-instance_method
     def authenticate(username, password)
       response = EM::DefaultDeferrable.new
       auth_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
@@ -285,6 +308,13 @@ module EM::Mongo
       response
     end
 
+    # Adds a user to this database for use with authentication. If the user already
+    # exists in the system, the password will be updated.
+    #
+    # @param [String] username
+    # @param [String] password
+    #
+    # @return [Hash] an object representing the user.
     def add_user(username, password)
       response = EM::DefaultDeferrable.new
       user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})

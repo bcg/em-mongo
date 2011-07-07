@@ -189,26 +189,44 @@ module EM::Mongo
 
   end
 
+  # An em-mongo Connection
   class Connection
 
+    # Initialize and connect to a MongoDB instance
+    # @param [String] host the host name or IP of the mongodb server to connect to
+    # @param [Integer] port the port the mongodb server is listening on
+    # @param [Integer] timeout the connection timeout
+    # @opts [Hash] opts connection options
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})
       @em_connection = EMConnection.connect(host, port, timeout, opts)
       @db = {}
     end
 
+    # Return a database with the given name.
+    #
+    # @param [String] db_name a valid database name.
+    #
+    # @return [EM::Mongo::Database]
     def db(name = DEFAULT_DB)
       @db[name] ||= EM::Mongo::Database.new(name, self)
     end
 
+    # Close the connection to the database.
     def close
       @em_connection.close
     end
 
+    #@return [true, false]
+    #  whether or not the connection is currently connected
     def connected?
       @em_connection.connected?
     end
    
     def send_command(*args);@em_connection.send_command(*args);end
+
+    # Is it okay to connect to a slave?
+    #
+    # @return [Boolean]
     def slave_ok?;@em_connection.slave_ok?;end
 
   end
