@@ -36,12 +36,14 @@ module EM::Mongo
     # @return [Array]
     def collection_names
       response = EM::DefaultDeferrable.new
-      collections_info.to_a.callback do |docs|
+      name_resp = collections_info.to_a
+      name_resp.callback do |docs|
         names = docs.collect{ |doc| doc['name'] || '' }
         names = names.delete_if {|name| name.index(self.name).nil? || name.index('$')}
         names = names.map{ |name| name.sub(self.name + '.','')}
         response.succeed(names)
       end
+      name_resp.errback { |err| response.fail err }
       response
     end
 
@@ -50,11 +52,13 @@ module EM::Mongo
     # @return [Array<Mongo::Collection>]
     def collections
       response = EM::DefaultDeferrable.new
-      collection_names.callback do |names|
+      name_resp = collection_names
+      name_resp.callback do |names|
         response.succeed names.map do |name|
           EM::Mongo::Collection.new(@db_name, name, @em_connection)
         end
       end
+      name_resp.errback { |err| response.fail err }
       response
     end
 
@@ -95,7 +99,8 @@ module EM::Mongo
     # @return [Mongo::Collection]
     def create_collection(name)
       response = EM::DefaultDeferrable.new
-      collection_names.callback do |names|
+      names_resp = collection_names
+      names_resp.callback do |names|
         if names.include?(name.to_s)
           response.succeed EM::Mongo::Collection.new(@db_name, name, @em_connection)
         end
@@ -103,14 +108,17 @@ module EM::Mongo
         # Create a new collection.
         oh = BSON::OrderedHash.new
         oh[:create] = name
-        command(oh).callback do |doc|
+        cmd_resp = command(oh)
+        cmd_resp.callback do |doc|
           if EM::Mongo::Support.ok?(doc)
             response.succeed EM::Mongo::Collection.new(@db_name, name, @em_connection)
           else
             response.fail [MongoDBError, "Error creating collection: #{doc.inspect}"]
           end
         end
+        cmd_resp.errback { |err| response.fail err }
       end
+      names_resp.errback { |err| response.fail err }
       response
     end
 
@@ -121,15 +129,19 @@ module EM::Mongo
     # @return [Boolean] +true+ on success or +false+ if the collection name doesn't exist.
     def drop_collection(name)
       response = EM::DefaultDeferrable.new
-      collection_names.callback do |names|
+      names_resp = collection_names
+      names_resp.callback do |names|
         if names.include?(name.to_s)
-          command(:drop=>name).callback do |doc|
+          cmd_resp = command(:drop=>name)
+          cmd_resp.callback do |doc|
             response.succeed EM::Mongo::Support.ok?(doc)
           end
+          cmd_resp.errback { |err| response.fail err }
         else
           response.succeed true
         end
       end
+      names_resp.errback { |err| response.fail err }
       response
     end
 
@@ -147,13 +159,15 @@ module EM::Mongo
       cmd = BSON::OrderedHash.new
       cmd[:getlasterror] = 1
       cmd.merge!(opts)
-      command(cmd, :check_response => false).callback do |doc|
+      cmd_resp = command(cmd, :check_response => false)
+      cmd_resp.callback do |doc|
         if EM::Mongo::Support.ok?(doc)
           response.succeed doc
         else
           response.fail [MongoDBError, "error retrieving last error: #{doc.inspect}"]
         end
       end
+      cmd_resp.errback { |err| response.fail err }
       response
     end
 
@@ -245,7 +259,8 @@ module EM::Mongo
 
     def authenticate(username, password)
       response = EM::DefaultDeferrable.new
-      self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1}).callback do |res|
+      auth_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
+      auth_resp.callback do |res|
         if not res or not res['nonce']
           response.succeed false
         else
@@ -255,25 +270,30 @@ module EM::Mongo
           auth['nonce']        = res['nonce']   
           auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
 
-          self.collection(SYSTEM_COMMAND_COLLECTION).first(auth).callback do |res|
+          auth_resp2 = self.collection(SYSTEM_COMMAND_COLLECTION).first(auth)
+          auth_resp2.callback do |res|
             if EM::Mongo::Support.ok?(res)
               response.succeed true
             else
               response.fail res
             end
           end
+          auth_resp2.errback { |err| response.fail err }
         end
       end
+      auth_resp.errback { |err| response.fail err }
       response
     end
 
     def add_user(username, password)
       response = EM::DefaultDeferrable.new
-      self.collection(SYSTEM_USER_COLLECTION).first({:user => username}).callback do |res|
+      user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})
+      user_resp.callback do |res|
         user = res || {:user => username}
         user['pwd'] = EM::Mongo::Support.hash_password(username, password)
         response.succeed self.collection(SYSTEM_USER_COLLECTION).save(user)
       end
+      user_resp.errback { |err| response.fail err }
       response
     end
 

@@ -125,13 +125,17 @@ module EM::Mongo
     # query string and the values for skip and limit, are preserved.
     def rewind!
       response = EM::DefaultDeferrable.new
-      close.callback do
+      close_resp = close
+      close_resp.callback do
         @cache.clear
         @cursor_id  = nil
         @closed     = false
         @query_run  = false
         @n_received = nil
         response.succeed
+      end
+      close_resp.errback do |err|
+        response.fail err
       end
       response
     end
@@ -141,7 +145,9 @@ module EM::Mongo
     # @return [Boolean]
     def has_next?
       response = EM::DefaultDeferrable.new
-      num_remaining.callback { |num| response.succeed( num > 0 ) }
+      num_resp = num_remaining
+      num_resp.callback { |num| response.succeed( num > 0 ) }
+      num_resp.errback { |err| response.fail err }
       response
     end
 
@@ -423,7 +429,9 @@ module EM::Mongo
     def num_remaining
       response = EM::DefaultDeferrable.new
       if @cache.length == 0
-        refresh.callback { response.succeed(@cache.length) }
+        ref_resp = refresh
+        ref_resp.callback { response.succeed(@cache.length) }
+        ref_resp.errback { |err| response.fail err }
       else
         response.succeed(@cache.length)
       end
@@ -454,11 +462,17 @@ module EM::Mongo
       message.put_long(@cursor_id)
 
       response = EM::DefaultDeferrable.new
-      @connection.send_command(EM::Mongo::OP_GET_MORE, message).callback do |resp|
+      cmd_resp = @connection.send_command(EM::Mongo::OP_GET_MORE, message)
+      cmd_resp.callback do |resp|
         @cache += resp.docs
         @n_received = resp.number_returned
         @returned += @n_received
-        close_cursor_if_query_complete.callback { response.succeed }
+        close_resp = close_cursor_if_query_complete
+        close_resp.callback { response.succeed }
+        close_resp.errback { |err| response.fail err }
+      end
+      cmd_resp.errback do |err|
+        response.fail err
       end
       response
     end
@@ -467,14 +481,18 @@ module EM::Mongo
     def send_initial_query
       response = EM::DefaultDeferrable.new
       message = construct_query_message
-      @connection.send_command(EM::Mongo::OP_QUERY, message).callback do |resp|
+      cmd_resp = @connection.send_command(EM::Mongo::OP_QUERY, message)
+      cmd_resp.callback do |resp|
         @cache += resp.docs
         @n_received = resp.number_returned
         @cursor_id = resp.cursor_id
         @returned += @n_received
         @query_run = true
-        close_cursor_if_query_complete.callback { response.succeed }
+        close_resp = close_cursor_if_query_complete
+        close_resp.callback { response.succeed }
+        close_resp.errback { |err| response.fail err }
       end
+      cmd_resp.errback { |err| response.fail err }
       response
     end
 
@@ -525,7 +543,9 @@ module EM::Mongo
     def close_cursor_if_query_complete
       response = EM::DefaultDeferrable.new
       if @limit > 0 && @returned >= @limit
-        close.callback { response.succeed }
+        close_resp = close
+        close_resp.callback { response.succeed }
+        close_resp.errback { |err| response.fail err }
       else
         response.succeed
       end
