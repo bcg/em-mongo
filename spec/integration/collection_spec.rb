@@ -415,7 +415,148 @@ describe EMMongo::Collection do
 
   end
 
- 
+  describe "distinct" do
+    it "shoud perform a distinct query" do
+      @conn, @coll = connection_and_collection
+      @coll.insert([{:a => 0, :b => {:c => "a"}},
+                     {:a => 1, :b => {:c => "b"}},
+                     {:a => 1, :b => {:c => "c"}},
+                     {:a => 2, :b => {:c => "a"}},
+                     {:a => 3},
+                     {:a => 3}])
+
+      @coll.distinct(:a).callback do |vals|
+        vals.sort.should == [0,1,2,3]
+        @coll.distinct("b.c").callback do |vals2|
+          vals2.sort.should == ["a","b","c"]
+          done
+        end
+      end
+    end
+    it "should respect a query" do
+      @conn, @coll = connection_and_collection
+      @coll.insert([{:a => 0, :b => {:c => "a"}},
+                     {:a => 1, :b => {:c => "b"}},
+                     {:a => 1, :b => {:c => "c"}},
+                     {:a => 2, :b => {:c => "a"}},
+                     {:a => 3},
+                     {:a => 3}])
+
+      @coll.distinct(:a, {:a => {"$gt" => 1}}).callback do |vals|
+        vals.sort.should == [2,3]
+        done
+      end
+    end
+    it "should respect a query and nested objects" do
+      @conn, @coll = connection_and_collection
+      @coll.insert([{:a => 0, :b => {:c => "a"}},
+                     {:a => 1, :b => {:c => "b"}},
+                     {:a => 1, :b => {:c => "c"}},
+                     {:a => 2, :b => {:c => "a"}},
+                     {:a => 3},
+                     {:a => 3}])
+
+      @coll.distinct("b.c", {"b.c" => {"$ne" => "c"}}).callback do |vals|
+        vals.sort.should == ["a","b"]
+        done
+      end
+    end
+  end
+
+  describe "group" do
+    it "should fail if missing required options" do
+      @conn, @coll = connection_and_collection
+      lambda { @coll.group(:initial => {}) }.should raise_error EM::Mongo::MongoArgumentError
+      lambda { @coll.group(:reduce => "foo") }.should raise_error EM::Mongo::MongoArgumentError
+      done
+    end
+    it "should group results using eval form" do
+      @conn, @coll = connection_and_collection
+      @coll.save("a" => 1)
+      @coll.save("b" => 1)
+      @initial = {"count" => 0}
+      @reduce_function = "function (obj, prev) { prev.count += inc_value; }"
+      @coll.group(:initial => @initial, :reduce => BSON::Code.new(@reduce_function, {"inc_value" => 0.5})).callback do |result|
+        result[0]["count"].should == 1
+        done
+      end
+      @coll.group(:initial => @initial, :reduce => BSON::Code.new(@reduce_function, {"inc_value" => 1})).callback do |result|
+        result[0]["count"].should == 2
+        done
+      end
+      @coll.group(:initial => @initial, :reduce => BSON::Code.new(@reduce_function, {"inc_value" => 2})).callback do |result|
+        result[0]["count"].should == 4
+        done
+      end
+    end
+    it "should finalize grouped results" do
+      @conn, @coll = connection_and_collection
+      @coll.save("a" => 1)
+      @coll.save("b" => 1)
+      @initial = {"count" => 0}
+      @reduce_function = "function (obj, prev) { prev.count += inc_value; }"
+      @finalize = "function(doc) {doc.f = doc.count + 200; }"
+      @coll.group(:initial => @initial, :reduce => BSON::Code.new(@reduce_function, {"inc_value" => 1}), :finalize => BSON::Code.new(@finalize)).callback do |results|
+        results[0]["f"].should == 202
+        done
+      end
+    end
+  end
+
+  describe "grouping with a key" do
+    it "should group" do
+      @conn, @coll = connection_and_collection
+      @coll.save("a" => 1, "pop" => 100)
+      @coll.save("a" => 1, "pop" => 100)
+      @coll.save("a" => 2, "pop" => 100)
+      @coll.save("a" => 2, "pop" => 100)
+      @initial = {"count" => 0, "foo" => 1}
+      @reduce_function = "function (obj, prev) { prev.count += obj.pop; }"
+      @coll.group(:key => :a, :initial => @initial, :reduce => @reduce_function).callback do |result|
+        result.all? {|r| r['count'] = 200 }.should be_true
+        done
+      end
+    end
+  end
+
+  describe "grouping with a function" do
+    it "should group results" do
+      @conn, @coll = connection_and_collection
+      @coll.save("a" => 1)
+      @coll.save("a" => 2)
+      @coll.save("a" => 3)
+      @coll.save("a" => 4)
+      @coll.save("a" => 5)
+      @initial = {"count" => 0}
+      @keyf    = "function (doc) { if(doc.a % 2 == 0) { return {even: true}; } else {return {odd: true}} };"
+      @reduce  = "function (obj, prev) { prev.count += 1; }"
+      @coll.group(:keyf => @keyf, :initial => @initial, :reduce => @reduce).callback do |results|
+        res = results.sort {|a,b| a['count'] <=> b['count']}
+        (res[0]['even'] && res[0]['count']).should == 2.0
+        (res[1]['odd'] && res[1]['count']) == 3.0
+        done
+      end
+    end
+
+    it "should group filtered results" do
+      @conn, @coll = connection_and_collection
+      @coll.save("a" => 1)
+      @coll.save("a" => 2)
+      @coll.save("a" => 3)
+      @coll.save("a" => 4)
+      @coll.save("a" => 5)
+      @initial = {"count" => 0}
+      @keyf    = "function (doc) { if(doc.a % 2 == 0) { return {even: true}; } else {return {odd: true}} };"
+      @reduce  = "function (obj, prev) { prev.count += 1; }"
+      @coll.group(:keyf => @keyf, :cond => {:a => {'$ne' => 2}},
+        :initial => @initial, :reduce => @reduce).callback do |results|
+        res = results.sort {|a, b| a['count'] <=> b['count']}
+        (res[0]['even'] && res[0]['count']).should == 1.0
+        (res[1]['odd'] && res[1]['count']) == 3.0
+        done
+      end
+    end
+  end
 
   it 'should handle multiple pending queries' do
     @conn, @coll = connection_and_collection

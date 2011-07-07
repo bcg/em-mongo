@@ -370,6 +370,110 @@ module EM::Mongo
     end
     alias :mapreduce :map_reduce
 
+    # Return a list of distinct values for +key+ across all
+    # documents in the collection. The key may use dot notation
+    # to reach into an embedded object.
+    #
+    # @param [String, Symbol, OrderedHash] key or hash to group by.
+    # @param [Hash] query a selector for limiting the result set over which to group.
+    #
+    # @example Saving zip codes and ages and returning distinct results.
+    #   @collection.save({:zip => 10010, :name => {:age => 27}})
+    #   @collection.save({:zip => 94108, :name => {:age => 24}})
+    #   @collection.save({:zip => 10010, :name => {:age => 27}})
+    #   @collection.save({:zip => 99701, :name => {:age => 24}})
+    #   @collection.save({:zip => 94108, :name => {:age => 27}})
+    #
+    #   @collection.distinct(:zip)
+    #     [10010, 94108, 99701]
+    #   @collection.distinct("name.age")
+    #     [27, 24]
+    #
+    #   # You may also pass a document selector as the second parameter
+    #   # to limit the documents over which distinct is run:
+    #   @collection.distinct("name.age", {"name.age" => {"$gt" => 24}})
+    #     [27]
+    #
+    # @return [Array] an array of distinct values.
+    def distinct(key, query=nil)
+      raise MongoArgumentError unless [String, Symbol].include?(key.class)
+      response = EM::DefaultDeferrable.new
+      command = BSON::OrderedHash.new
+      command[:distinct] = @ns
+      command[:key]      = key.to_s
+      command[:query]    = query
+
+      cmd_resp = db.command(command)
+      cmd_resp.callback do |resp|
+        response.succeed resp["values"]
+      end
+      cmd_resp.errback do |err|
+        response.fail err
+      end
+      response
+    end
+
+     # Perform a group aggregation.
+    #
+    # @param [Hash] opts the options for this group operation. The minimum required are :initial
+    #   and :reduce.
+    #
+    # @option opts [Array, String, Symbol] :key (nil) Either the name of a field or a list of fields to group by (optional).
+    # @option opts [String, BSON::Code] :keyf (nil) A JavaScript function to be used to generate the grouping keys (optional).
+    # @option opts [String, BSON::Code] :cond ({}) A document specifying a query for filtering the documents over
+    #   which the aggregation is run (optional).
+    # @option opts [Hash] :initial the initial value of the aggregation counter object (required).
+    # @option opts [String, BSON::Code] :reduce (nil) a JavaScript aggregation function (required).
+    # @option opts [String, BSON::Code] :finalize (nil) a JavaScript function that receives and modifies
+    #   each of the resultant grouped objects. Available only when group is run with command
+    #   set to true.
+    #
+    # @return [Array] the command response consisting of grouped items.
+    def group(opts={})
+      response = EM::DefaultDeferrable.new
+      reduce   =  opts[:reduce]
+      finalize =  opts[:finalize]
+      cond     =  opts.fetch(:cond, {})
+      initial  =  opts[:initial]
+
+      if !(reduce && initial)
+        raise MongoArgumentError, "Group requires at minimum values for initial and reduce."
+      end
+
+      cmd = {
+        "group" => {
+          "ns"      => @ns,
+          "$reduce" => reduce.to_bson_code,
+          "cond"    => cond,
+          "initial" => initial
+        }
+      }
+
+      if finalize
+        cmd['group']['finalize'] = finalize.to_bson_code
+      end
+
+      if key = opts[:key]
+        if key.is_a?(String) || key.is_a?(Symbol)
+          key = [key]
+        end
+        key_value = {}
+        key.each { |k| key_value[k] = 1 }
+        cmd["group"]["key"] = key_value
+      elsif keyf = opts[:keyf]
+        cmd["group"]["$keyf"] = keyf.to_bson_code
+      end
+
+      cmd_resp = db.command(cmd)
+      cmd_resp.callback do |result|
+        response.succeed result["retval"]
+      end
+      cmd_resp.errback do |err|
+        response.fail err
+      end
+      response
+    end
+
 
     # Get the number of documents in this collection.
     #
@@ -394,6 +498,13 @@ module EM::Mongo
         hint.to_a.each { |k| h[k] = 1 }
         h
       end
+    end
+
+    # Return stats on the collection. Uses MongoDB's collstats command.
+    #
+    # @return [Hash]
+    def stats
+      @db.command({:collstats => @name})
     end
 
 
