@@ -314,7 +314,7 @@ module EM::Mongo
     #
     # @core findandmodify find_and_modify-instance_method
     def find_and_modify(opts={})
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       cmd = BSON::OrderedHash.new
       cmd[:findandmodify] = @ns
       cmd.merge!(opts)
@@ -361,7 +361,7 @@ module EM::Mongo
     #
     # @core mapreduce map_reduce-instance_method
     def map_reduce(map, reduce, opts={})
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       map    = BSON::Code.new(map) unless map.is_a?(BSON::Code)
       reduce = BSON::Code.new(reduce) unless reduce.is_a?(BSON::Code)
       raw    = opts.delete(:raw)
@@ -419,7 +419,7 @@ module EM::Mongo
     # @return [Array] an array of distinct values.
     def distinct(key, query=nil)
       raise MongoArgumentError unless [String, Symbol].include?(key.class)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       command = BSON::OrderedHash.new
       command[:distinct] = @ns
       command[:key]      = key.to_s
@@ -452,7 +452,7 @@ module EM::Mongo
     #
     # @return [Array] the command response consisting of grouped items.
     def group(opts={})
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       reduce   =  opts[:reduce]
       finalize =  opts[:finalize]
       cond     =  opts.fetch(:cond, {})

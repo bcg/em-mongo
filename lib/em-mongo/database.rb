@@ -47,7 +47,7 @@ module EM::Mongo
     #
     # @return [Array]
     def collection_names
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       name_resp = collections_info.to_a
       name_resp.callback do |docs|
         names = docs.collect{ |doc| doc['name'] || '' }
@@ -63,7 +63,7 @@ module EM::Mongo
     #
     # @return [Array<EM::Mongo::Collection>]
     def collections
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       name_resp = collection_names
       name_resp.callback do |names|
         response.succeed names.map do |name|
@@ -110,7 +110,7 @@ module EM::Mongo
     #
     # @return [EM::Mongo::Collection]
     def create_collection(name)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       names_resp = collection_names
       names_resp.callback do |names|
         if names.include?(name.to_s)
@@ -140,7 +140,7 @@ module EM::Mongo
     #
     # @return [Boolean] +true+ on success or +false+ if the collection name doesn't exist.
     def drop_collection(name)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       names_resp = collection_names
       names_resp.callback do |names|
         if names.include?(name.to_s)
@@ -167,7 +167,7 @@ module EM::Mongo
     #
     # @raise [MongoDBError] if the operation fails.
     def get_last_error(opts={})
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       cmd = BSON::OrderedHash.new
       cmd[:getlasterror] = 1
       cmd.merge!(opts)
@@ -188,7 +188,7 @@ module EM::Mongo
     #
     # @return [Boolean]
     def error?
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       err_resp = get_last_error
       err_resp.callback do |doc|
         response.succeed doc['err'] != nil
@@ -249,7 +249,7 @@ module EM::Mongo
         raise MongoArgumentError, "DB#command requires an OrderedHash when hash contains multiple keys"
       end
 
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       cmd_resp = Cursor.new(self.collection(SYSTEM_COMMAND_COLLECTION), :limit => -1, :selector => selector).next_document
 
       cmd_resp.callback do |doc|
@@ -281,7 +281,7 @@ module EM::Mongo
     #
     # @core authenticate authenticate-instance_method
     def authenticate(username, password)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       auth_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
       auth_resp.callback do |res|
         if not res or not res['nonce']
@@ -316,7 +316,7 @@ module EM::Mongo
     #
     # @return [Hash] an object representing the user.
     def add_user(username, password)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})
       user_resp.callback do |res|
         user = res || {:user => username}

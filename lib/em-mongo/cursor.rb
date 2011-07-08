@@ -84,7 +84,7 @@ module EM::Mongo
     #
     # @return [Hash, Nil] the next document or Nil if no documents remain.
     def next_document
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       if @cache.length == 0
         refresh.callback do
           check_and_transform_document(@cache.shift, response)
@@ -124,7 +124,7 @@ module EM::Mongo
     # Reset this cursor on the server. Cursor options, such as the
     # query string and the values for skip and limit, are preserved.
     def rewind!
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       close_resp = close
       close_resp.callback do
         @cache.clear
@@ -144,7 +144,7 @@ module EM::Mongo
     #
     # @return [Boolean]
     def has_next?
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       num_resp = num_remaining
       num_resp.callback { |num| response.succeed( num > 0 ) }
       num_resp.errback { |err| response.fail err }
@@ -159,7 +159,7 @@ module EM::Mongo
     #
     # @raise [OperationFailure] on a database error.
     def count(skip_and_limit = false)
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       command = BSON::OrderedHash["count",  @collection.name, "query",  @selector]
 
       if skip_and_limit
@@ -305,7 +305,7 @@ module EM::Mongo
     #
     # @return [Array] an array of documents.
     def to_a
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       items = []
       self.each do |doc,err|
         if doc == :error
@@ -325,7 +325,7 @@ module EM::Mongo
     #
     # @core explain explain-instance_method
     def explain
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       c = Cursor.new(@collection, query_options_hash.merge(:limit => -@limit.abs, :explain => true))
       
       exp_response = c.next_document
@@ -351,7 +351,7 @@ module EM::Mongo
     #
     # @return [True]
     def close
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       if @cursor_id && @cursor_id != 0
         @cursor_id = 0
         @closed    = true
@@ -427,7 +427,7 @@ module EM::Mongo
 
     # Return the number of documents remaining for this cursor.
     def num_remaining
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       if @cache.length == 0
         ref_resp = refresh
         ref_resp.callback { response.succeed(@cache.length) }
@@ -439,7 +439,7 @@ module EM::Mongo
     end
 
     def refresh
-      return EM::DefaultDeferrable.new.tap{|d|d.succeed} if @cursor_id && @cursor_id.zero?
+      return RequestResponse.new.tap{|d|d.succeed} if @cursor_id && @cursor_id.zero?
       return send_initial_query unless @query_run
 
       message = BSON::ByteBuffer.new([0, 0, 0, 0])
@@ -461,7 +461,7 @@ module EM::Mongo
       # Cursor id.
       message.put_long(@cursor_id)
 
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       cmd_resp = @connection.send_command(EM::Mongo::OP_GET_MORE, message)
       cmd_resp.callback do |resp|
         @cache += resp.docs
@@ -479,7 +479,7 @@ module EM::Mongo
 
     # Run query the first time we request an object from the wire
     def send_initial_query
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       message = construct_query_message
       cmd_resp = @connection.send_command(EM::Mongo::OP_QUERY, message)
       cmd_resp.callback do |resp|
@@ -541,7 +541,7 @@ module EM::Mongo
     end
 
     def close_cursor_if_query_complete
-      response = EM::DefaultDeferrable.new
+      response = RequestResponse.new
       if @limit > 0 && @returned >= @limit
         close_resp = close
         close_resp.callback { response.succeed }

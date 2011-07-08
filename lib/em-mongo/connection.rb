@@ -78,7 +78,7 @@ module EM::Mongo
         send_data buffer
       end
 
-      @responses[request_id] = EM::DefaultDeferrable.new
+      @responses[request_id] = RequestResponse.new
     end
 
     # EM hooks
