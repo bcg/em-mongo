@@ -124,20 +124,12 @@ module EM::Mongo
     # Reset this cursor on the server. Cursor options, such as the
     # query string and the values for skip and limit, are preserved.
     def rewind!
-      response = RequestResponse.new
-      close_resp = close
-      close_resp.callback do
-        @cache.clear
-        @cursor_id  = nil
-        @closed     = false
-        @query_run  = false
-        @n_received = nil
-        response.succeed
-      end
-      close_resp.errback do |err|
-        response.fail err
-      end
-      response
+      close
+      @cache.clear
+      @cursor_id  = nil
+      @closed     = false
+      @query_run  = false
+      @n_received = nil
     end
 
     # Determine whether this cursor has any remaining results.
@@ -351,7 +343,6 @@ module EM::Mongo
     #
     # @return [True]
     def close
-      response = RequestResponse.new
       if @cursor_id && @cursor_id != 0
         @cursor_id = 0
         @closed    = true
@@ -359,11 +350,7 @@ module EM::Mongo
         message.put_int(1)
         message.put_long(@cursor_id)
         @connection.send_command(EM::Mongo::OP_KILL_CURSORS, message)
-        response.succeed
-      else
-        response.succeed
       end
-      response
     end
 
     # Is this cursor closed?
@@ -462,17 +449,16 @@ module EM::Mongo
       message.put_long(@cursor_id)
 
       response = RequestResponse.new
-      cmd_resp = @connection.send_command(EM::Mongo::OP_GET_MORE, message)
-      cmd_resp.callback do |resp|
-        @cache += resp.docs
-        @n_received = resp.number_returned
-        @returned += @n_received
-        close_resp = close_cursor_if_query_complete
-        close_resp.callback { response.succeed }
-        close_resp.errback { |err| response.fail err }
-      end
-      cmd_resp.errback do |err|
-        response.fail err
+      @connection.send_command(EM::Mongo::OP_GET_MORE, message) do |resp|
+        if resp == :disconnected
+          response.fail(:disconnected)
+        else
+          @cache += resp.docs
+          @n_received = resp.number_returned
+          @returned += @n_received
+          close_cursor_if_query_complete
+          response.succeed
+        end
       end
       response
     end
@@ -481,18 +467,19 @@ module EM::Mongo
     def send_initial_query
       response = RequestResponse.new
       message = construct_query_message
-      cmd_resp = @connection.send_command(EM::Mongo::OP_QUERY, message)
-      cmd_resp.callback do |resp|
-        @cache += resp.docs
-        @n_received = resp.number_returned
-        @cursor_id = resp.cursor_id
-        @returned += @n_received
-        @query_run = true
-        close_resp = close_cursor_if_query_complete
-        close_resp.callback { response.succeed }
-        close_resp.errback { |err| response.fail err }
+      @connection.send_command(EM::Mongo::OP_QUERY, message) do |resp|
+        if resp == :disconnected
+          response.fail(:disconnected)
+        else
+          @cache += resp.docs
+          @n_received = resp.number_returned
+          @cursor_id = resp.cursor_id
+          @returned += @n_received
+          @query_run = true
+          close_cursor_if_query_complete
+          response.succeed
+        end
       end
-      cmd_resp.errback { |err| response.fail err }
       response
     end
 
@@ -508,14 +495,6 @@ module EM::Mongo
       message
     end
 
-    # def instrument_payload
-    #   log = { :database => @db.name, :collection => @collection.name, :selector => selector }
-    #   log[:fields] = @fields  if @fields
-    #   log[:skip] = @skip  if @skip && (@skip > 0)
-    #   log[:limit] = @limit  if @limit && (@limit > 0)
-    #   log[:order] = @order  if @order
-    #   log
-    # end
 
     def construct_query_spec
       return @selector if @selector.has_key?('$query')
@@ -541,15 +520,7 @@ module EM::Mongo
     end
 
     def close_cursor_if_query_complete
-      response = RequestResponse.new
-      if @limit > 0 && @returned >= @limit
-        close_resp = close
-        close_resp.callback { response.succeed }
-        close_resp.errback { |err| response.fail err }
-      else
-        response.succeed
-      end
-      response
+      close if @limit > 0 && @returned >= @limit
     end
 
     def check_modifiable

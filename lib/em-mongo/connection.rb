@@ -71,14 +71,15 @@ module EM::Mongo
       headers
     end
 
-    def send_command(op, message)
+    def send_command(op, message, &cb)
       request_id, buffer = prepare_message(op, message)
 
       callback do
         send_data buffer
       end
 
-      @responses[request_id] = RequestResponse.new
+      @responses[request_id] = cb if cb
+      request_id
     end
 
     # EM hooks
@@ -136,7 +137,7 @@ module EM::Mongo
       while message_received?(@buffer)
         response = next_response
         callback = @responses.delete(response.response_to)
-        callback.succeed(response)
+        callback.call(response) if callback
       end
 
       if @buffer.more?
@@ -157,7 +158,7 @@ module EM::Mongo
 
     def unbind
       if @is_connected
-        @responses.values.each { |resp| resp.fail(:disconnected) }
+        @responses.values.each { |resp| resp.call(:disconnected) }
 
         @request_id = 0
         @responses = {}
@@ -222,7 +223,7 @@ module EM::Mongo
       @em_connection.connected?
     end
    
-    def send_command(*args);@em_connection.send_command(*args);end
+    def send_command(*args, &block);@em_connection.send_command(*args, &block);end
 
     # Is it okay to connect to a slave?
     #

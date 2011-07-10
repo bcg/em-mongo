@@ -84,11 +84,10 @@ describe EMMongo::Cursor do
       r1.length.should == 100
       cursor.to_a.callback do |r2|
         r2.length.should == 0
-        cursor.rewind!.callback do 
-          cursor.to_a.callback do |r3|
-            r3.length.should == 100
-            done
-          end
+        cursor.rewind!
+        cursor.to_a.callback do |r3|
+          r3.length.should == 100
+          done
         end
       end
 

@@ -8,6 +8,9 @@ module EM::Mongo
     SYSTEM_JS_COLLECTION = "system.js"
     SYSTEM_COMMAND_COLLECTION = "$cmd"
 
+    # The length of time that Collection.ensure_index should cache index calls
+    attr_accessor :cache_time
+
     # @param [String] name the database name.
     # @param [EM::Mongo::Connection] connection a connection object pointing to MongoDB. Note
     #   that databases are usually instantiated via the Connection class. See the examples below.
@@ -18,6 +21,7 @@ module EM::Mongo
       @em_connection = connection || EM::Mongo::Connection.new
       @collection = nil
       @collections = {}
+      @cache_time = 300 #5 minutes.
     end
 
     # Get a collection by name.
@@ -157,6 +161,58 @@ module EM::Mongo
       response
     end
 
+    # Drop an index from a given collection. Normally called from
+    # Collection#drop_index or Collection#drop_indexes.
+    #
+    # @param [String] collection_name
+    # @param [String] index_name
+    #
+    # @return [True] returns +true+ on success.
+    #
+    # @raise MongoDBError if there's an error renaming the collection.
+    def drop_index(collection_name, index_name)
+      response = RequestResponse.new
+      oh = BSON::OrderedHash.new
+      oh[:deleteIndexes] = collection_name
+      oh[:index] = index_name.to_s
+      cmd_resp = command(oh, :check_response => false)
+      cmd_resp.callback do |doc|
+        if EM::Mongo::Support.ok?(doc) 
+          response.succeed(true)
+        else
+          response.fail [MongoDBError, "Error with drop_index command: #{doc.inspect}"]
+        end
+      end
+      cmd_resp.errback do |err|
+        response.fail err
+      end
+      response
+    end
+
+    # Get information on the indexes for the given collection.
+    # Normally called by Collection#index_information.
+    #
+    # @param [String] collection_name
+    #
+    # @return [Hash] keys are index names and the values are lists of [key, direction] pairs
+    #   defining the index.
+    def index_information(collection_name)
+      response = RequestResponse.new
+      sel  = {:ns => full_collection_name(collection_name)}
+      idx_resp = Cursor.new(self.collection(SYSTEM_INDEX_COLLECTION), :selector => sel).to_a
+      idx_resp.callback do |indexes|
+        info = indexes.inject({}) do |info, index|
+          info[index['name']] = index
+          info
+        end
+        response.succeed info
+      end
+      idx_resp.errback do |err|
+        fail err
+      end
+      response
+    end
+
     # Run the getlasterror command with the specified replication options.
     #
     # @option opts [Boolean] :fsync (false)
@@ -252,7 +308,7 @@ module EM::Mongo
       response = RequestResponse.new
       cmd_resp = Cursor.new(self.collection(SYSTEM_COMMAND_COLLECTION), :limit => -1, :selector => selector).next_document
 
-      cmd_resp.callback do |doc|
+      cmd_resp.callback do |doc|  
         if doc.nil?
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: returned null."])
         elsif (check_response && !EM::Mongo::Support.ok?(doc))
