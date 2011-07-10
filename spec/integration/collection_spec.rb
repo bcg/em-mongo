@@ -558,6 +558,113 @@ describe EMMongo::Collection do
     end
   end
 
+  context "indexes" do
+    it "should create an index using symbols" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index :foo, :name => :bar
+      @collection.index_information.callback do |info|
+        info['bar'].should_not be_nil
+        done
+      end
+    end
+    
+    it "should create a geospatial index" do
+      @conn, @geo = connection_and_collection('geo')
+      @geo.save({'loc' => [-100, 100]})
+      @geo.create_index([['loc', EM::Mongo::GEO2D]])
+      @geo.index_information.callback do |info|
+        info['loc_2d'].should_not be_nil
+        done
+      end  
+    end 
+
+    it "should create a unique index" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['a', EM::Mongo::ASCENDING]], :unique => true)
+      @collection.index_information.callback do |info|
+        info['a_1']['unique'].should == true
+        done
+      end
+    end
+
+    it "should create an index in the background" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['b', EM::Mongo::ASCENDING]], :background => true)
+      @collection.index_information.callback do |info|
+        info['b_1']['background'].should == true
+        done
+      end
+    end
+
+    it "should require an array of arrays" do
+      @conn, @collection = connection_and_collection('test-collection')
+      proc { @collection.create_index(['c', EM::Mongo::ASCENDING]) }.should raise_error
+      done
+    end
+
+    it "should enforce proper index types" do
+      @conn, @collection = connection_and_collection('test-collection')
+      proc { @collection.create_index([['c', 'blah']]) }.should raise_error
+      done
+    end
+
+    it "should allow an alernate name to be specified" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index :bar, :name => 'foo_index'
+      @collection.index_information.callback do |info|
+        info['foo_index'].should_not be_nil
+        done
+      end
+    end
+
+    it "should generate indexes in the proper order" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.should_receive(:insert_documents) do |sel, coll|
+        sel[0][:name].should == 'b_1_a_1'
+      end
+      @collection.create_index([['b',1],['a',1]])
+      done
+    end
+
+    it "should allow multiple calls to create_index" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['a',1]]).should be_true
+      @collection.create_index([['a',1]]).should be_true
+      done
+    end
+
+    it "should allow the creation of multiple indexes" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['a',1]]).should be_true
+      @collection.create_index([['b',1]]).should be_true
+      done
+    end
+
+    it "should return a properly ordered index info" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['b',1],['a',1]])
+      @collection.index_information.callback do |info|
+        info['b_1_a_1'].should_not be_nil
+        done
+      end
+    end
+    
+    it "should drop an index" do
+      @conn, @collection = connection_and_collection('test-collection')
+      @collection.create_index([['a',EM::Mongo::ASCENDING]])
+      @collection.index_information.callback do |info|
+        info['a_1'].should_not be_nil
+        @collection.drop_index([['a',EM::Mongo::ASCENDING]]).callback do 
+          @collection.index_information.callback do |info|
+            info['a_1'].should be_nil
+            done
+          end
+        end
+      end
+      
+    end    
+  end
+
   it 'should handle multiple pending queries' do
     @conn, @coll = connection_and_collection
 

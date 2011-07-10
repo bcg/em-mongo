@@ -512,6 +512,96 @@ module EM::Mongo
       @db.command({:collstats => @name})
     end
 
+    # Get information on the indexes for this collection.
+    #
+    # @return [Hash] a hash where the keys are index names.
+    #
+    # @core indexes
+    def index_information
+      db.index_information(@ns)
+    end
+
+     # Create a new index.
+    #
+    # @param [String, Array] spec
+    #   should be either a single field name or an array of
+    #   [field name, direction] pairs. Directions should be specified
+    #   as Mongo::ASCENDING, Mongo::DESCENDING, or Mongo::GEO2D.
+    #
+    #   Note that geospatial indexing only works with versions of MongoDB >= 1.3.3+. Keep in mind, too,
+    #   that in order to geo-index a given field, that field must reference either an array or a sub-object
+    #   where the first two values represent x- and y-coordinates. Examples can be seen below.
+    #
+    #   Also note that it is permissible to create compound indexes that include a geospatial index as
+    #   long as the geospatial index comes first.
+    #
+    #   If your code calls create_index frequently, you can use Collection#ensure_index to cache these calls
+    #   and thereby prevent excessive round trips to the database.
+    #
+    # @option opts [Boolean] :unique (false) if true, this index will enforce a uniqueness constraint.
+    # @option opts [Boolean] :background (false) indicate that the index should be built in the background. This
+    #   feature is only available in MongoDB >= 1.3.2.
+    # @option opts [Boolean] :drop_dups (nil) If creating a unique index on a collection with pre-existing records,
+    #   this option will keep the first document the database indexes and drop all subsequent with duplicate values.
+    # @option opts [Integer] :min (nil) specify the minimum longitude and latitude for a geo index.
+    # @option opts [Integer] :max (nil) specify the maximum longitude and latitude for a geo index.
+    #
+    # @example Creating a compound index:
+    #   @posts.create_index([['subject', Mongo::ASCENDING], ['created_at', Mongo::DESCENDING]])
+    #
+    # @example Creating a geospatial index:
+    #   @restaurants.create_index([['location', Mongo::GEO2D]])
+    #
+    #   # Note that this will work only if 'location' represents x,y coordinates:
+    #   {'location': [0, 50]}
+    #   {'location': {'x' => 0, 'y' => 50}}
+    #   {'location': {'latitude' => 0, 'longitude' => 50}}
+    #
+    # @example A geospatial index with alternate longitude and latitude:
+    #   @restaurants.create_index([['location', Mongo::GEO2D]], :min => 500, :max => 500)
+    #
+    # @return [String] the name of the index created.
+    #
+    # @core indexes create_index-instance_method
+    def create_index(spec, opts={})
+      field_spec = parse_index_spec(spec)
+      opts = opts.dup
+      name = opts.delete(:name) || generate_index_name(field_spec)
+      name = name.to_s if name
+
+      generate_indexes(field_spec, name, opts)
+      name
+    end
+
+    # Drop a specified index.
+    #
+    # @param [String] name
+    #
+    # @core indexes
+    def drop_index(name)
+      if name.is_a?(Array)
+        response = RequestResponse.new
+        name_resp = index_name(name)
+        name_resp.callback do |name|
+          drop_resp = db.drop_index(@ns, name)
+          drop_resp.callback { response.succeed }
+          drop_resp.errback { |err| response.fail(err) }
+        end
+        name_resp.errback { |err| response.fail(err) }
+        response
+      else
+        db.drop_index(@ns, name)
+      end
+    end
+
+    # Drop all indexes.
+    #
+    # @core indexes
+    def drop_indexes
+      # Note: calling drop_indexes with no args will drop them all.
+      db.drop_index(@ns, '*')
+    end
+
     protected
 
     def normalize_hint_fields(hint)
@@ -557,6 +647,62 @@ module EM::Mongo
       raise InvalidOperation, "Exceded maximum insert size of 16,000,000 bytes" if message.size > 16_000_000
       @connection.send_command(EM::Mongo::OP_INSERT, message)
       documents.collect { |o| o[:_id] || o['_id'] }
+    end
+
+   
+
+    def index_name(spec)
+      response = RequestResponse.new
+      field_spec = parse_index_spec(spec)
+      info_resp = index_information
+      info_resp.callback do |indexes|
+        found = indexes.values.find do |index|
+          index['key'] == field_spec
+        end
+        response.succeed( found ? found['name'] : nil )
+      end
+      info_resp.errback do |err|
+        response.fail err
+      end
+      response
+    end
+
+    def parse_index_spec(spec)
+      field_spec = BSON::OrderedHash.new
+      if spec.is_a?(String) || spec.is_a?(Symbol)
+        field_spec[spec.to_s] = 1
+      elsif spec.is_a?(Array) && spec.all? {|field| field.is_a?(Array) }
+        spec.each do |f|
+          if [EM::Mongo::ASCENDING, EM::Mongo::DESCENDING, EM::Mongo::GEO2D].include?(f[1])
+            field_spec[f[0].to_s] = f[1]
+          else
+            raise MongoArgumentError, "Invalid index field #{f[1].inspect}; " + 
+              "should be one of Mongo::ASCENDING (1), Mongo::DESCENDING (-1) or Mongo::GEO2D ('2d')."
+          end
+        end
+      else
+        raise MongoArgumentError, "Invalid index specification #{spec.inspect}; " + 
+          "should be either a string, symbol, or an array of arrays."
+      end
+      field_spec
+    end
+
+    def generate_indexes(field_spec, name, opts)
+      selector = {
+        :name   => name,
+        :ns     => "#{@db}.#{@ns}",
+        :key    => field_spec
+      }
+      selector.merge!(opts)
+      insert_documents([selector], EM::Mongo::Database::SYSTEM_INDEX_COLLECTION, false)
+    end
+
+    def generate_index_name(spec)
+      indexes = []
+      spec.each_pair do |field, direction|
+        indexes.push("#{field}_#{direction}")
+      end
+      indexes.join("_")
     end
 
   end

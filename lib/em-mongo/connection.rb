@@ -21,6 +21,12 @@ module EM::Mongo
   OP_QUERY_AWAIT_DATA        = 2 ** 5
   OP_QUERY_EXHAUST           = 2 ** 6
 
+  ASCENDING  =  1
+  DESCENDING = -1
+  GEO2D      = '2d'
+
+  DEFAULT_MAX_BSON_SIZE = 4 * 1024 * 1024
+
   class EMConnection < EM::Connection
     MAX_RETRIES = 5
 

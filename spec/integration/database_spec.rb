@@ -173,4 +173,10 @@ describe EMMongo::Database do
     end
   end
 
+  describe "Indexes" do
+    #Index functions are integration tested via the collection specs. Maybe the wrong order,
+    #but the collection index functions all call down to the database index functions, and the
+    #tests would simply duplicate eachother
+  end
+
 end

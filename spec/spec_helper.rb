@@ -12,10 +12,14 @@ require File.expand_path('../lib/em-mongo', File.dirname(__FILE__))
 
 require "em-spec/rspec"
 
-def connection_and_collection
+def connection_and_collection(collection_name=EM::Mongo::DEFAULT_NS)
   conn = EMMongo::Connection.new 
-  conn.db.collection.remove
-  return conn, conn.db.collection
+  return conn, collection(conn, collection_name)
+end
+
+def collection(conn, name)
+  conn.db.collection(name).remove
+  conn.db.collection(name)
 end
 
 def number_hash
