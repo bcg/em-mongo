@@ -232,6 +232,27 @@ describe EMMongo::Collection do
       end
     end
 
+    context "safe_insert" do
+      it "should succesfully save a document with no errors" do
+        @conn, @coll = connection_and_collection('safe.test')
+        @coll.safe_insert({"hello" => "world"}).callback do |ok|
+          ok.should be_a_kind_of BSON::ObjectId
+          done
+        end
+      end
+      
+      it "should respond with an error when an invalid document is saved" do
+        @conn, @coll = connection_and_collection('safe.test')
+        @coll.create_index("hello", :unique => true)
+        a = {"hello" => "world"}
+        @coll.insert(a)
+        resp = @coll.safe_insert(a).errback do |err|
+          err[0].should == EM::Mongo::OperationFailure
+          done
+        end
+      end
+    end
+
   end
 
   describe "update" do
@@ -259,6 +280,59 @@ describe EMMongo::Collection do
       end
     end
 
+    context "safe_update" do
+      it "should respond with an error when an invalid document is updated" do
+        @conn, @coll = connection_and_collection('safe.update.test')
+        @coll.create_index("x", :unique => true)
+        @coll.insert({"x" => 5})
+        @coll.insert({"x" => 10}) 
+       
+        @coll.safe_update({},{"x" => 10}).errback do |err|
+          err[0].should == EM::Mongo::OperationFailure
+          done
+        end
+      end
+    end
+
+  end
+
+  describe "save" do
+    
+    it "should insert a record when no id is present" do
+      @conn, @coll = connection_and_collection
+      id = @coll.save("x" => 1)
+      @coll.find("x" => 1).to_a.callback do |result|
+        result[0]["_id"].should == id
+        done
+      end
+    end
+
+    it "should update a record when id is present" do
+      @conn, @coll = connection_and_collection
+      doc = {"x" => 1}
+      id = @coll.save(doc)
+      doc["x"] = 2
+      @coll.save(doc).should be_true
+      @coll.find().to_a.callback do |result|
+        result.count.should == 1
+        result[0]["x"].should == 2
+        done
+      end
+    end
+
+    context "safe_save" do
+       it "should respond with an error when an invalid document is updated" do
+        @conn, @coll = connection_and_collection('safe.save.test')
+        @coll.create_index("x", :unique => true)
+        @coll.save({"x" => 5})
+        @coll.save({"x" => 5}) 
+       
+        @coll.safe_save({"x" => 5}).errback do |err|
+          err[0].should == EM::Mongo::OperationFailure
+          done
+        end
+      end
+    end
   end
 
   describe "remove" do

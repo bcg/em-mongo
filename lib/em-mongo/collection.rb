@@ -176,7 +176,24 @@ module EM::Mongo
     # @return [ObjectId, Array]
     #   The _id of the inserted document or a list of _ids of all inserted documents.
     #
-    # @option opts [Boolean, Hash] :safe (+false+)
+    # @see DB#remove for options that can be passed to :safe.
+    #
+    # @core insert insert-instance_method
+    def insert(doc_or_docs)
+      safe_insert(doc_or_docs, :safe => false).data
+    end
+    alias_method :<<, :insert
+
+    # Insert one or more documents into the collection, with a failure if the operation doesn't succeed
+    # Unlike insert, this method returns a deferrable
+    #
+    # @param [Hash, Array] doc_or_docs
+    #   a document (as a hash) or array of documents to be inserted.
+    #
+    # @return [ObjectId, Array]
+    #   The _id of the inserted document or a list of _ids of all inserted documents.
+    #
+    # @option opts [Boolean, Hash] :safe (+true+)
     #   run the operation in safe mode, which run a getlasterror command on the
     #   database to report any assertion. In addition, a hash can be provided to
     #   run an fsync and/or wait for replication of the insert (>= 1.5.1). Safe
@@ -187,13 +204,20 @@ module EM::Mongo
     # @see DB#remove for options that can be passed to :safe.
     #
     # @core insert insert-instance_method
-    def insert(doc_or_docs, opts={})
+    def safe_insert(doc_or_docs, safe_opts = {})
+      response = RequestResponse.new
+      safe_opts[:safe] = true unless safe_opts[:safe] == false
       doc_or_docs = [doc_or_docs] unless doc_or_docs.is_a?(Array)
       doc_or_docs.map! { |doc| sanitize_id!(doc) }
-      result = insert_documents(doc_or_docs, @ns, true)
-      result.size > 1 ? result : result.first
+      insert_resp = insert_documents(doc_or_docs, @ns, true, safe_opts)
+      insert_resp.callback do |ids|
+        ids.length > 1 ? response.succeed(ids) : response.succeed(ids[0])
+      end
+      insert_resp.errback do |err|
+        response.fail err
+      end
+      response
     end
-    alias_method :<<, :insert
 
     # Update one or more documents in this collection.
     #
@@ -209,7 +233,31 @@ module EM::Mongo
     # @option opts [Boolean] :upsert (+false+) if true, performs an upsert (update or insert)
     # @option opts [Boolean] :multi (+false+) update all documents matching the selector, as opposed to
     #   just the first matching document. Note: only works in MongoDB 1.1.3 or later.
-    # @option opts [Boolean] :safe (+false+) 
+    #
+    # @return [Hash, true] Returns a Hash containing the last error object if running in safe mode.
+    #   Otherwise, returns true.
+    #
+    # @core update update-instance_method
+    def update(selector, document, opts={})
+      # Initial byte is 0.
+      safe_update(selector, document, opts.merge(:safe => false)).data
+    end
+
+     # Update one or more documents in this collection.
+    #
+    # @param [Hash] selector
+    #   a hash specifying elements which must be present for a document to be updated. Note:
+    #   the update command currently updates only the first document matching the
+    #   given selector. If you want all matching documents to be updated, be sure
+    #   to specify :multi => true.
+    # @param [Hash] document
+    #   a hash specifying the fields to be changed in the selected document,
+    #   or (in the case of an upsert) the document to be inserted
+    #
+    # @option opts [Boolean] :upsert (+false+) if true, performs an upsert (update or insert)
+    # @option opts [Boolean] :multi (+false+) update all documents matching the selector, as opposed to
+    #   just the first matching document. Note: only works in MongoDB 1.1.3 or later.
+    # @option opts [Boolean] :safe (+true+) 
     #   If true, check that the save succeeded. OperationFailure
     #   will be raised on an error. Note that a safe check requires an extra
     #   round-trip to the database. Safe options provided here will override any safe
@@ -220,18 +268,29 @@ module EM::Mongo
     #   Otherwise, returns true.
     #
     # @core update update-instance_method
-    def update(selector, document, opts={})
+    def safe_update(selector, document, opts={})
+      response = RequestResponse.new
+      opts = opts.dup
+      opts[:safe] = true unless opts[:safe] == false
       # Initial byte is 0.
       message = BSON::ByteBuffer.new("\0\0\0\0")
       BSON::BSON_RUBY.serialize_cstr(message, "#{@db}.#{@ns}")
       update_options  = 0
-      update_options += 1 if opts[:upsert]
-      update_options += 2 if opts[:multi]
+      update_options += 1 if opts.delete(:upsert)
+      update_options += 2 if opts.delete(:multi)
       message.put_int(update_options)
       message.put_binary(BSON::BSON_CODER.serialize(selector, false, true).to_s)
       message.put_binary(BSON::BSON_CODER.serialize(document, false, true).to_s)
-      @connection.send_command(EM::Mongo::OP_UPDATE, message)
-      true  
+
+      if opts[:safe]
+        send_resp = safe_send(EM::Mongo::OP_UPDATE, message, true, opts)
+        send_resp.callback { response.succeed(true) }
+        send_resp.errback { |err| response.fail(err) }
+      else
+        @connection.send_command(EM::Mongo::OP_UPDATE, message)
+        response.succeed(true)
+      end
+      response
     end
 
     # Save a document to this collection.
@@ -243,20 +302,33 @@ module EM::Mongo
     #
     # @return [ObjectId] the _id of the saved document.
     #
-    # @option opts [Boolean, Hash] :safe (+false+)
+    def save(doc, opts={})
+      safe_save(doc, opts.merge(:safe => false)).data
+    end
+
+     # Save a document to this collection.
+    #
+    # @param [Hash] doc
+    #   the document to be saved. If the document already has an '_id' key,
+    #   then an update (upsert) operation will be performed, and any existing
+    #   document with that _id is overwritten. Otherwise an insert operation is performed.
+    #
+    # @return [ObjectId] the _id of the saved document.
+    #
+    # @option opts [Boolean, Hash] :safe (+true+)
     #   run the operation in safe mode, which run a getlasterror command on the
     #   database to report any assertion. In addition, a hash can be provided to
     #   run an fsync and/or wait for replication of the save (>= 1.5.1). See the options
     #   for DB#error.
     #
-    def save(doc, opts={})
+    def safe_save(doc, opts={})
+      opts[:safe] = true unless opts[:safe] == false
       id = has_id?(doc)
       sanitize_id!(doc)
       if id
-        update({:_id => id}, doc, :upsert => true)
-        id
+        safe_update({:_id => id}, doc, opts.merge(:upsert => true))
       else
-        insert(doc)
+        safe_insert(doc, opts)
       end
     end
 
@@ -637,7 +709,8 @@ module EM::Mongo
     # Sends a Mongo::Constants::OP_INSERT message to the database.
     # Takes an array of +documents+, an optional +collection_name+, and a
     # +check_keys+ setting.
-    def insert_documents(documents, collection_name=@name, check_keys=true)
+    def insert_documents(documents, collection_name=@name, check_keys = true, safe_options={})
+      response = RequestResponse.new
       # Initial byte is 0.
       message = BSON::ByteBuffer.new("\0\0\0\0")
       BSON::BSON_RUBY.serialize_cstr(message, "#{@db}.#{collection_name}")
@@ -645,11 +718,36 @@ module EM::Mongo
         message.put_binary(BSON::BSON_CODER.serialize(doc, check_keys, true).to_s)
       end
       raise InvalidOperation, "Exceded maximum insert size of 16,000,000 bytes" if message.size > 16_000_000
-      @connection.send_command(EM::Mongo::OP_INSERT, message)
-      documents.collect { |o| o[:_id] || o['_id'] }
+      
+      ids = documents.collect { |o| o[:_id] || o['_id'] }
+
+      if safe_options[:safe]
+        send_resp = safe_send(EM::Mongo::OP_INSERT, message, ids, safe_options)
+        send_resp.callback { response.succeed(ids) }
+        send_resp.errback { |err| response.fail(err) }
+      else
+        @connection.send_command(EM::Mongo::OP_INSERT, message)
+        response.succeed(ids)
+      end
+      response
     end
 
-   
+    def safe_send(op, message, return_val, options={})
+      response = RequestResponse.new
+      options[:safe] = true
+      options[:db_name] = @db
+      @connection.send_command(op, message, options)  do |server_resp|
+        docs = server_resp.docs
+        if server_resp.number_returned == 1 && (error = docs[0]['err'] || docs[0]['errmsg'])
+          @connection.close if error == "not master"
+          error = "wtimeout" if error == "timeout"
+          response.fail [EM::Mongo::OperationFailure, "#{docs[0]['code']}: #{error}"]
+        else
+          response.succeed(return_val)
+        end
+      end
+      response
+    end
 
     def index_name(spec)
       response = RequestResponse.new

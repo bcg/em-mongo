@@ -62,10 +62,27 @@ module EM::Mongo
 
     # MongoDB Commands
 
-    def prepare_message(op, message)
+    def prepare_message(op, message, options={})
       req_id = new_request_id
       message.prepend!(message_headers(op, req_id, message))
+      req_id = prepare_safe_message(message,options) if options[:safe]
       [req_id, message.to_s]
+    end
+
+    def prepare_safe_message(message,options)
+        db_name = options[:db_name]
+        unless db_name
+          raise( ArgumentError, "You must include the :db_name option when :safe => true" )
+        end
+
+        last_error_params = options[:last_error_params] || false
+        last_error_message = BSON::ByteBuffer.new
+
+        build_last_error_message(last_error_message, db_name, last_error_params)
+        last_error_id = new_request_id
+        last_error_message.prepend!(message_headers(EM::Mongo::OP_QUERY, last_error_id, last_error_message))
+        message.append!(last_error_message)
+        last_error_id
     end
     
     def message_headers(operation, request_id, message)
@@ -77,8 +94,8 @@ module EM::Mongo
       headers
     end
 
-    def send_command(op, message, &cb)
-      request_id, buffer = prepare_message(op, message)
+    def send_command(op, message, options={}, &cb)
+      request_id, buffer = prepare_message(op, message, options)
 
       callback do
         send_data buffer
@@ -192,6 +209,25 @@ module EM::Mongo
       else
         @close_pending = true
       end
+    end
+
+     # Constructs a getlasterror message. This method is used exclusively by
+    # Connection#send_message_with_safe_check.
+    #
+    # Because it modifies message by reference, we don't need to return it.
+    def build_last_error_message(message, db_name, opts)
+      message.put_int(0)
+      BSON::BSON_RUBY.serialize_cstr(message, "#{db_name}.$cmd")
+      message.put_int(0)
+      message.put_int(-1)
+      cmd = BSON::OrderedHash.new
+      cmd[:getlasterror] = 1
+      if opts.is_a?(Hash)
+        opts.assert_valid_keys(:w, :wtimeout, :fsync)
+        cmd.merge!(opts)
+      end
+      message.put_binary(BSON::BSON_CODER.serialize(cmd, false).to_s)
+      nil
     end
 
   end

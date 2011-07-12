@@ -20,11 +20,11 @@ module EM
       end
 
       def data
-        @deferred_args.pop if succeeded? && @deferred_args
+        @deferred_args[-1] if succeeded? && @deferred_args
       end
 
       def error
-        @deferred_args.pop if failed? && @deferred_args
+        @deferred_args[-1] if failed? && @deferred_args
       end
 
     end
