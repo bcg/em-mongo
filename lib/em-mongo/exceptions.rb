@@ -1,4 +1,4 @@
-
+require "timeout"
 # encoding: UTF-8
 
 #

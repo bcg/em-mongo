@@ -9,17 +9,20 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
 
 == Some examples
 
+  #this file can be found in the examples directory. 
+  # bundle exec examples/readme.rb
+
   #insert a few records, then read some back using Collection#find
 
   require 'em-mongo'
   require 'eventmachine'
 
   EM.run do
-    db = EM::Mongo::Connection.new(:host => 'localhost').db('my_database')
+    db = EM::Mongo::Connection.new('localhost').db('my_database')
     collection = db.collection('my_collection')
     EM.next_tick do
       (1..10).each do |i|
-        collection.insert { :revolution => i }
+        collection.insert( { :revolution => i } )
       end
 
       #find returns an EM::Mongo::Cursor
@@ -35,7 +38,7 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       #synchronous version of the method from
       #the mongo-ruby-driver
       resp.callback do |documents|
-        puts documents.inspect
+        puts "I just got #{documents.length} documents! I'm really cool!"
       end
 
       #when em-mongo IO methods fail, they
@@ -44,22 +47,28 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       resp.errback do |err|
         raise *err
       end
+
+      #iterate though each result in a query
+      collection.find( :revolution => { "$gt" => 5 } ).limit(1).skip(1).each do |doc|
+        #unlike the mongo-ruby-driver, each returns null at the end of the cursor
+        if doc
+          puts "Revolution ##{doc['revolution']}"
+        end
+      end  
+
+      #add an index
+      collection.create_index [[:revolution, -1]]
+
+      #insert a document and ensure it gets written
+      save_resp = collection.safe_save( { :hi => "there" }, :last_error_params => {:fsync=>true} )
+      save_resp.callback { puts "Hi is there, let us give thanks" }
+      save_resp.errback { |err| puts "AAAAAAAAAAAAAAAARGH! Oh why! WHY!?!?!" }
+
+      collection.drop
+
+      EM.add_periodic_timer(1) { EM.stop }
+
     end
-
-    #iterate though each result in a query
-    collection.find( :revolution => { "$gt" => 8 } ).limit(1).each do |doc|
-      puts doc.inspect
-    end  
-
-    #add an index
-    collection.create_index [[:revolution, -1]]
-
-    #insert a document and ensure it gets written
-    save_resp = collection.safe_save( { :hi => "there" }, :last_error_params => {:fsync=>true} )
-    save_resp.callback { puts "Hi is there, let us give thanks" }
-    save_resp.errback { |err| puts "AAAAAAAAAAAAAAAARGH! Oh why! WHY!?!?!" }
-
-    EM.stop
 
   end
 
