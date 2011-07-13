@@ -26,10 +26,12 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       end
 
       #find returns an EM::Mongo::Cursor
+
       cursor = collection.find 
 
       #most cursor methods return an EM::Mongo::RequestResponse,
       #which is an EventMachine::Deferrable
+
       resp = cursor.to_a 
 
       #when em-mongo IO methods succeed, they 
@@ -37,6 +39,7 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       #value you would have expected from the 
       #synchronous version of the method from
       #the mongo-ruby-driver
+
       resp.callback do |documents|
         puts "I just got #{documents.length} documents! I'm really cool!"
       end
@@ -44,11 +47,13 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       #when em-mongo IO methods fail, they
       #errback with an array in the form
       #[ErrorClass, "error message"]
+
       resp.errback do |err|
         raise *err
       end
 
       #iterate though each result in a query
+
       collection.find( :revolution => { "$gt" => 5 } ).limit(1).skip(1).each do |doc|
         #unlike the mongo-ruby-driver, each returns null at the end of the cursor
         if doc
@@ -57,9 +62,11 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       end  
 
       #add an index
+
       collection.create_index [[:revolution, -1]]
 
       #insert a document and ensure it gets written
+      
       save_resp = collection.safe_save( { :hi => "there" }, :last_error_params => {:fsync=>true} )
       save_resp.callback { puts "Hi is there, let us give thanks" }
       save_resp.errback { |err| puts "AAAAAAAAAAAAAAAARGH! Oh why! WHY!?!?!" }
