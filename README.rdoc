@@ -148,55 +148,55 @@ This file will not remain in the project forever, though, so it is better to upg
 
 === Collection
 
-  #CRUD operations
+CRUD operations
   
   #find, #find_one, #save, #safe_save, #insert, #save_insert, #update, #safe_update, #remove, #find_and_modify
 
-  #Index management
+Index management
   
   #create_index, #drop_index
 
-  #Collection management
+Collection management
   
   #drop, #stats, #count, #name
 
-  #Server-side aggregations
+Server-side aggregations
   
   #map_reduce, #group, #distinct
 
 === Database
 
-  #Collection management
+Collection management
   
   #collection, #collection_names, #collections, #collections_info, #create_collection, #drop_collection
 
-  #Index management
+Index management
   
   #drop_index, #index_information
 
-  #Authentication
+Authentication
   
   #authenticate, #add_user
 
-  #Misc
+Misc
   
   #get_last_error, #error?, #name, #command
 
 === Cursor
 
-  #Query options
+Query options
   :selector, :order, :skip, :limit, :explain, :batch_size, :fields, :tailable, :transformer
 
-  #Enumerable-ish
-  #**EM::Mongo::Cursor does **not** use the Enumerable mixin for obvious reasons**
+Enumerable-ish
+**EM::Mongo::Cursor does **not** use the Enumerable mixin for obvious reasons**
   
   #next_document, #rewind!, #has_next?, #count, #each, #to_a
 
-  #Misc
+Misc
   
   #batch_size, #explain, #close, #closed?
 
-  #Query modifier methods
+Query modifier methods
   
   #sort, #limit, #skip
 
