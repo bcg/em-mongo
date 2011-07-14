@@ -121,9 +121,9 @@ In addition to calling your errback if the write fails, you can provide the usua
 
 == Upgrading
   
-The API for em-mongo has changed since version 0.3.6. 
+**The API for em-mongo has changed since version 0.3.6.** 
 
- em-mongo methods no longer directly accept callbacks and instead return EM::Mongo::RequestResponse objects, which are EM::Deferrable(s). This means you need to convert calls like this
+em-mongo methods no longer directly accept callbacks and instead return EM::Mongo::RequestResponse objects, which are EM::Deferrable(s). This means you need to convert calls like this
 
   my_collection.first() { |doc| p doc }
 
