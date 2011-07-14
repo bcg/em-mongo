@@ -140,8 +140,8 @@ module EM::Mongo
 
     # Return a single object from the database.
     #
-    # @return [OrderedHash, Nil]
-    #   a single document or nil if no result is found.
+    # @return [EM::Mongo::RequestResponse]
+    #   calls back with a single document or nil if no result is found.
     #
     # @param [Hash, ObjectId, Nil] spec_or_object_id a hash specifying elements 
     #   which must be present for a document to be included in the result set or an 
@@ -190,8 +190,8 @@ module EM::Mongo
     # @param [Hash, Array] doc_or_docs
     #   a document (as a hash) or array of documents to be inserted.
     #
-    # @return [ObjectId, Array]
-    #   The _id of the inserted document or a list of _ids of all inserted documents.
+    # @return [EM::Mongo::RequestResponse]
+    #   Calls backw ith the _id of the inserted document or a list of _ids of all inserted documents.
     #
     # @option opts [Boolean, Hash] :safe (+true+)
     #   run the operation in safe mode, which run a getlasterror command on the
@@ -250,8 +250,8 @@ module EM::Mongo
     #   the update command currently updates only the first document matching the
     #   given selector. If you want all matching documents to be updated, be sure
     #   to specify :multi => true.
-    # @param [Hash] document
-    #   a hash specifying the fields to be changed in the selected document,
+    # @param [EM::Mongo::RequestResponse] document
+    #   calls back with a hash specifying the fields to be changed in the selected document,
     #   or (in the case of an upsert) the document to be inserted
     #
     # @option opts [Boolean] :upsert (+false+) if true, performs an upsert (update or insert)
@@ -313,7 +313,7 @@ module EM::Mongo
     #   then an update (upsert) operation will be performed, and any existing
     #   document with that _id is overwritten. Otherwise an insert operation is performed.
     #
-    # @return [ObjectId] the _id of the saved document.
+    # @return [EM::Mongo::RequestResponse] Calls backw with the _id of the saved document.
     #
     # @option opts [Boolean, Hash] :safe (+true+)
     #   run the operation in safe mode, which run a getlasterror command on the
@@ -382,7 +382,7 @@ module EM::Mongo
     # @option opts [Boolean] :new (false) If true, returns the updated document; otherwise, returns the document
     #   prior to update.
     #
-    # @return [Hash] the matched document.
+    # @return [EM::Mongo::RequestResponse] Calls back with the matched document.
     #
     # @core findandmodify find_and_modify-instance_method
     def find_and_modify(opts={})
@@ -425,7 +425,7 @@ module EM::Mongo
     #   map-reduce output (as, for example, when using :out => {:inline => 1}), then you must specify this option
     #   or an ArgumentError will be raised.
     #
-    # @return [Collection, Hash] a Mongo::Collection object or a Hash with the map-reduce command's results.
+    # @return [EM::Mongo::RequestResponse] Calls back with a EM::Mongo::Collection object or a Hash with the map-reduce command's results.
     #
     # @raise ArgumentError if you specify {:out => {:inline => true}} but don't specify :raw => true.
     #
@@ -488,7 +488,7 @@ module EM::Mongo
     #   @collection.distinct("name.age", {"name.age" => {"$gt" => 24}})
     #     [27]
     #
-    # @return [Array] an array of distinct values.
+    # @return [EM::Mongo::RequestResponse] Calls back with an array of distinct values.
     def distinct(key, query=nil)
       raise MongoArgumentError unless [String, Symbol].include?(key.class)
       response = RequestResponse.new
@@ -522,7 +522,7 @@ module EM::Mongo
     #   each of the resultant grouped objects. Available only when group is run with command
     #   set to true.
     #
-    # @return [Array] the command response consisting of grouped items.
+    # @return [EM::Mongo::RequestResponse] calls back with the command response consisting of grouped items.
     def group(opts={})
       response = RequestResponse.new
       reduce   =  opts[:reduce]
@@ -571,7 +571,7 @@ module EM::Mongo
 
     # Get the number of documents in this collection.
     #
-    # @return [Integer]
+    # @return [EM::Mongo::RequestResponse]
     def count
       find().count
     end
@@ -579,14 +579,14 @@ module EM::Mongo
 
     # Return stats on the collection. Uses MongoDB's collstats command.
     #
-    # @return [Hash]
+    # @return [EM::Mongo::RequestResponse]
     def stats
       @db.command({:collstats => @name})
     end
 
     # Get information on the indexes for this collection.
     #
-    # @return [Hash] a hash where the keys are index names.
+    # @return [EM::Mongo::RequestResponse] Calls back with a hash where the keys are index names.
     #
     # @core indexes
     def index_information
@@ -647,7 +647,7 @@ module EM::Mongo
 
     # Drop a specified index.
     #
-    # @param [String] name
+    # @param [EM::Mongo::RequestResponse] name
     #
     # @core indexes
     def drop_index(name)

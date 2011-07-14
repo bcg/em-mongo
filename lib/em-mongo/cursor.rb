@@ -82,7 +82,7 @@ module EM::Mongo
 
     # Get the next document specified the cursor options.
     #
-    # @return [Hash, Nil] the next document or Nil if no documents remain.
+    # @return [EM::Mongo::RequestResponse] Calls back with the next document or Nil if no documents remain.
     def next_document
       response = RequestResponse.new
       if @cache.length == 0
@@ -134,7 +134,7 @@ module EM::Mongo
 
     # Determine whether this cursor has any remaining results.
     #
-    # @return [Boolean]
+    # @return [EM::Mongo::RequestResponse]
     def has_next?
       response = RequestResponse.new
       num_resp = num_remaining
@@ -147,7 +147,7 @@ module EM::Mongo
     #
     # @param [Boolean] whether of not to take notice of skip and limit
     #
-    # @return [Integer] the number of objects in the result set for this query.
+    # @return [EM::Mongo::RequestResponse] Calls back with the number of objects in the result set for this query.
     #
     # @raise [OperationFailure] on a database error.
     def count(skip_and_limit = false)
@@ -260,11 +260,14 @@ module EM::Mongo
     #
     # Iterating over an entire cursor will close it.
     #
-    # @yield passes each document to a block for processing.
+    # @yield passes each document to a block for processing. When the cursor is empty,
+    #   each will yield a nil value
     #
     # @example if 'comments' represents a collection of comments:
     #   comments.find.each do |doc|
-    #     puts doc['user']
+    #     if doc
+    #       puts doc['user']
+    #     end
     #   end
     def each(&blk)
       raise "A callback block is required for #each" unless blk
@@ -295,7 +298,7 @@ module EM::Mongo
     # Use of this method is discouraged - in most cases, it's much more
     # efficient to retrieve documents as you need them by iterating over the cursor.
     #
-    # @return [Array] an array of documents.
+    # @return [EM::Mongo::RequestResponse] Calls back with an array of documents.
     def to_a
       response = RequestResponse.new
       items = []
@@ -313,7 +316,7 @@ module EM::Mongo
 
     # Get the explain plan for this cursor.
     #
-    # @return [Hash] a document containing the explain plan for this cursor.
+    # @return [EM::Mongo::RequestResponse] Calls back with a document containing the explain plan for this cursor.
     #
     # @core explain explain-instance_method
     def explain
@@ -351,6 +354,7 @@ module EM::Mongo
         message.put_long(@cursor_id)
         @connection.send_command(EM::Mongo::OP_KILL_CURSORS, message)
       end
+      true
     end
 
     # Is this cursor closed?
@@ -413,6 +417,7 @@ module EM::Mongo
     end
 
     # Return the number of documents remaining for this cursor.
+    # @return [EM::Mongo::RequestResponse]
     def num_remaining
       response = RequestResponse.new
       if @cache.length == 0

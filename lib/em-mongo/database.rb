@@ -49,7 +49,7 @@ module EM::Mongo
 
     # Get an array of collection names in this database.
     #
-    # @return [Array]
+    # @return [EM::Mongo::RequestResponse]
     def collection_names
       response = RequestResponse.new
       name_resp = collections_info.to_a
@@ -65,7 +65,7 @@ module EM::Mongo
 
     # Get an array of Collection instances, one for each collection in this database.
     #
-    # @return [Array<EM::Mongo::Collection>]
+    # @return [EM::Mongo::RequestResponse]
     def collections
       response = RequestResponse.new
       name_resp = collection_names
@@ -112,7 +112,7 @@ module EM::Mongo
     #   either we're in +strict+ mode and the collection
     #   already exists or collection creation fails on the server.
     #
-    # @return [EM::Mongo::Collection]
+    # @return [EM::Mongo::RequestResponse] Calls back with the new collection
     def create_collection(name)
       response = RequestResponse.new
       names_resp = collection_names
@@ -142,7 +142,7 @@ module EM::Mongo
     #
     # @param [String, Symbol] name
     #
-    # @return [Boolean] +true+ on success or +false+ if the collection name doesn't exist.
+    # @return [EM::Mongo::RequestResponse] Calls back with +true+ on success or +false+ if the collection name doesn't exist.
     def drop_collection(name)
       response = RequestResponse.new
       names_resp = collection_names
@@ -154,7 +154,7 @@ module EM::Mongo
           end
           cmd_resp.errback { |err| response.fail err }
         else
-          response.succeed true
+          response.succeed false
         end
       end
       names_resp.errback { |err| response.fail err }
@@ -167,7 +167,7 @@ module EM::Mongo
     # @param [String] collection_name
     # @param [String] index_name
     #
-    # @return [True] returns +true+ on success.
+    # @return [EM::Mongo::RequestResponse] returns +true+ on success.
     #
     # @raise MongoDBError if there's an error renaming the collection.
     def drop_index(collection_name, index_name)
@@ -194,7 +194,7 @@ module EM::Mongo
     #
     # @param [String] collection_name
     #
-    # @return [Hash] keys are index names and the values are lists of [key, direction] pairs
+    # @return [EM::Mongo::RequestResponse] Calls back with a hash where keys are index names and the values are lists of [key, direction] pairs
     #   defining the index.
     def index_information(collection_name)
       response = RequestResponse.new
@@ -219,7 +219,7 @@ module EM::Mongo
     # @option opts [Integer] :w (nil)
     # @option opts [Integer] :wtimeout (nil)
     #
-    # @return [Hash] the entire response to getlasterror.
+    # @return [EM::Mongo::RequestResponse] the entire response to getlasterror.
     #
     # @raise [MongoDBError] if the operation fails.
     def get_last_error(opts={})
@@ -242,7 +242,7 @@ module EM::Mongo
     # Return +true+ if an error was caused by the most recently executed
     # database operation.
     #
-    # @return [Boolean]
+    # @return [EM::Mongo::RequestResponse]
     def error?
       response = RequestResponse.new
       err_resp = get_last_error
@@ -260,7 +260,7 @@ module EM::Mongo
     # Calls to DB#previous_error will only return errors that have occurred
     # since the most recent call to this method.
     #
-    # @return [Hash]
+    # @return [EM::Mongo::RequestResponse]
     def reset_error_history
       command(:reseterror => 1)
     end
@@ -294,7 +294,7 @@ module EM::Mongo
     # command fails.
     # @option opts [Socket] :socket a socket to use for sending the command. This is mainly for internal use.
     #
-    # @return [EM::Deferrable]
+    # @return [EM::Mongo::RequestResponse] Calls back with a hash representing the result of the command
     #
     # @core commands command_instance-method
     def command(selector, opts={})
@@ -331,7 +331,7 @@ module EM::Mongo
     # @param [String] username
     # @param [String] password
     #
-    # @return [Boolean]
+    # @return [EM::Mongo::RequestResponse] Calls back with +true+ or +false+, indicating success or failure
     #
     # @raise [AuthenticationError]
     #
@@ -370,7 +370,7 @@ module EM::Mongo
     # @param [String] username
     # @param [String] password
     #
-    # @return [Hash] an object representing the user.
+    # @return [EM::Mongo::RequestResponse] Calls back with an object representing the user.
     def add_user(username, password)
       response = RequestResponse.new
       user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})

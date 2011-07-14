@@ -116,6 +116,8 @@ em-mongo has the following safe methods:
 
 In addition to calling your errback if the write fails, you can provide the usual 'safety' options that you can to Database#get_last_error, such as :fsync => true or :w => 2, to control the degree of safety you want. Please the 10gen documentation on DB#get_last_error for specifics.
 
+  safe_insert( {:a=>"v"}, :last_error_params => { :fsync => true, :w => 5 } )
+
 
 == Upgrading
   

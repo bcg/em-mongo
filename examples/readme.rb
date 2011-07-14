@@ -1,3 +1,4 @@
+#bundle exec ruby examples/readme.rb
 require 'em-mongo'
 require 'eventmachine'
 
