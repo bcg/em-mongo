@@ -129,7 +129,7 @@ em-mongo methods no longer directly accept callbacks and instead return EM::Mong
 
 to this
 
-  my_collection.find().callback { |doc| p doc }
+  my_collection.first().callback { |doc| p doc }
 
 EM::Mongo::Collection#find now returns a cursor, not an array, to maintain compatibility with the mongo-ruby-driver. This provides a great deal more flexibility, but requires you to select a specific cursor method to actually fetch data from the server, such as #to_a or #next
 
