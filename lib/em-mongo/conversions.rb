@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ++
-module Mongo #:nodoc:
+module EM::Mongo #:nodoc:
 
   # Utility module to include when needing to convert certain types of
   # objects to mongo-friendly parameters.
@@ -82,7 +82,7 @@ module Mongo #:nodoc:
       return -1 if DESCENDING_CONVERSION.include?(val)
       raise InvalidSortValueError.new(
         "#{self} was supplied as a sort direction when acceptable values are: " +
-        "Mongo::ASCENDING, 'ascending', 'asc', :ascending, :asc, 1, Mongo::DESCENDING, " +
+        "EM::Mongo::ASCENDING, 'ascending', 'asc', :ascending, :asc, 1, EM::Mongo::DESCENDING, " +
         "'descending', 'desc', :descending, :desc, -1.")
     end
   end

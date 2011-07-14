@@ -1,31 +1,218 @@
 = EM-Mongo
 
-An EventMachine client for MongoDB. Originally based on RMongo. This client aims to be as api compatible
-with mongo-ruby-driver as possible.
+An EventMachine client for MongoDB. Originally based on RMongo, this client aims to be as api compatible
+with mongo-ruby-driver as possible. 
 
-== Examples
+For methods that do not retrieve data from the database the api of em-mongo should be identical (though a subset) to the mongo-ruby-driver. This includes the various update methods like insert, save and update (without the :safe flag, which is handled separately) as well as find, which returns a cursor.
 
-   require 'em-mongo'
+For operations that require IO, em-mongo always returns an EventMachine deferrable. 
 
-   EM.run do
-     db = EM::Mongo::Connection.new.db('db')
-     collection = db.collection('test')
-     EM.next_tick do
-       doc = {"hello" => "world"}
-       id = collection.insert(doc)
-       collection.find('_id' => id]) do |res|
-         puts res.inspect
-         EM.stop
-       end
-       collection.remove(doc)
-     end
-   end
+== Some examples
 
-== Todo
+  #this file can be found in the examples directory. 
+  # bundle exec examples/readme.rb
 
-1. -Refactor unit tests and make them more comprehensive-
-2. collection.index
-3. Server side aggregate functions (reference[http://www.mongodb.org/display/DOCS/Aggregation#Aggregation-Distinct])
+  #insert a few records, then read some back using Collection#find
+
+  require 'em-mongo'
+  require 'eventmachine'
+
+  EM.run do
+    db = EM::Mongo::Connection.new('localhost').db('my_database')
+    collection = db.collection('my_collection')
+    EM.next_tick do
+      (1..10).each do |i|
+        collection.insert( { :revolution => i } )
+      end
+
+      #find returns an EM::Mongo::Cursor
+
+      cursor = collection.find 
+
+      #most cursor methods return an EM::Mongo::RequestResponse,
+      #which is an EventMachine::Deferrable
+
+      resp = cursor.to_a 
+
+      #when em-mongo IO methods succeed, they 
+      #will always call back with the return
+      #value you would have expected from the 
+      #synchronous version of the same method from
+      #the mongo-ruby-driver
+
+      resp.callback do |documents|
+        puts "I just got #{documents.length} documents! I'm really cool!"
+      end
+
+      #when em-mongo IO methods fail, they
+      #errback with an array in the form
+      #[ErrorClass, "error message"]
+
+      resp.errback do |err|
+        raise *err
+      end
+
+      #iterate though each result in a query
+
+      collection.find( :revolution => { "$gt" => 5 } ).limit(1).skip(1).each do |doc|
+        #unlike the mongo-ruby-driver, each returns null at the end of the cursor
+        if doc
+          puts "Revolution ##{doc['revolution']}"
+        end
+      end  
+
+      #add an index
+
+      collection.create_index [[:revolution, -1]]
+
+      #insert a document and ensure it gets written
+
+      save_resp = collection.safe_save( { :hi => "there" }, :last_error_params => {:fsync=>true} )
+      save_resp.callback { puts "Hi is there, let us give thanks" }
+      save_resp.errback { |err| puts "AAAAAAAAAAAAAAAARGH! Oh why! WHY!?!?!" }
+
+      collection.drop
+
+      EM.add_periodic_timer(1) { EM.stop }
+
+    end
+
+  end
+
+== Error handling
+
+em-mongo will present errors in two different ways. First, em-mongo will raise exceptions like any other synchronous library if an error is enountered in a method that does not need to perform IO or if an error is encountered prior to peforming IO.
+
+Errors returned by the database, or errors communicating with the database, will be delivered via standard EM::Deferrable errbacks. While it is tempting to subscribe just to a callback
+
+  my_colletion.find.to_a.callback {|docs| ... }
+
+in the case of an error you will never receive a response. If you are waiting for a response before your program continues, you will be waiting a very long time. A better approach would be to store the deferrable into a variable and subscribe to its callback and errback
+
+  resp = my_collection.find.to_a
+  resp.callback { |docs| ... }
+  resp.errback { |err| raise *err }
+
+errback's blocks will always be called with a single argument which is a two element array containing the error class and the error message 
+
+  [EM::Mongo::OperationError, "aw snap"]
+
+== Safe Writes
+
+As you are probably aware the default behavior for the mongo-ruby-driver, and therefore em-mongo, is to send update messages to MongoDB in a fire-and-forget manner. This means that if a unique index is violated, or some other problem causes MongoDB to raise an exception and refuse to apply your changes, you'll never know about it until you go to look for that record later. For many applications such as logging this might be OK, but for many use cases like analytics you will want to know if your writes don't succeed.
+
+This is one place where em-mongo diverges substantially from the mongo-ruby-driver because an unsafe write will not receive a response from the server, whereas a safe write will receive a response from the server and requires a deferrable and a callback.
+
+  #default, unsafe write
+  my_collection.insert( {:a => "b" } )
+
+  #a safe write using em-mongo
+  insert_resp = my_collection.safe_insert( {:a => "b" } )
+  insert_resp.callback do { #all ok }
+  insert_resp.errback do { |err| puts '<sigh>' }
+
+em-mongo has the following safe methods:
+  safe_insert, safe_update, safe_save
+
+In addition to calling your errback if the write fails, you can provide the usual 'safety' options that you can to Database#get_last_error, such as :fsync => true or :w => 2, to control the degree of safety you want. Please the 10gen documentation on DB#get_last_error for specifics.
+
+  safe_insert( {:a=>"v"}, :last_error_params => { :fsync => true, :w => 5 } )
+
+
+== Upgrading
+  
+**The API for em-mongo has changed since version 0.3.6.** 
+
+em-mongo methods no longer directly accept callbacks and instead return EM::Mongo::RequestResponse objects, which are EM::Deferrable(s). This means you need to convert calls like this
+
+  my_collection.first() { |doc| p doc }
+
+to this
+
+  my_collection.first().callback { |doc| p doc }
+
+EM::Mongo::Collection#find now returns a cursor, not an array, to maintain compatibility with the mongo-ruby-driver. This provides a great deal more flexibility, but requires you to select a specific cursor method to actually fetch data from the server, such as #to_a or #next
+
+  my_collection.find() { |docs| ... }
+
+becomes
+
+  my_collection.find.to_a.callback { |docs| ... }
+
+If for some reason you aren't ready to upgrade your project but you want to be able to use the newer gem, you can require a compatibility file that will revert the new API to the API found in 0.3.6
+
+  require 'em-mongo'
+  require 'em-mongo/prev.rb'
+
+This file will not remain in the project forever, though, so it is better to upgrade your projects sooner rather than later.
+
+== What's in the box?
+
+=== Collection
+
+CRUD operations
+  
+  #find, #find_one, #save, #safe_save, #insert, #save_insert, #update, #safe_update, #remove, #find_and_modify
+
+Index management
+  
+  #create_index, #drop_index
+
+Collection management
+  
+  #drop, #stats, #count, #name
+
+Server-side aggregations
+  
+  #map_reduce, #group, #distinct
+
+=== Database
+
+Collection management
+  
+  #collection, #collection_names, #collections, #collections_info, #create_collection, #drop_collection
+
+Index management
+  
+  #drop_index, #index_information
+
+Authentication
+  
+  #authenticate, #add_user
+
+Misc
+  
+  #get_last_error, #error?, #name, #command
+
+=== Cursor
+
+Query options
+  :selector, :order, :skip, :limit, :explain, :batch_size, :fields, :tailable, :transformer
+
+Enumerable-ish
+**EM::Mongo::Cursor does **not** use the Enumerable mixin for obvious reasons**
+  
+  #next_document, #rewind!, #has_next?, #count, #each, #to_a
+
+Misc
+  
+  #batch_size, #explain, #close, #closed?
+
+Query modifier methods
+  
+  #sort, #limit, #skip
+
+== Compatibility
+* em-mongo has been tested on Ruby 1.8.7 and 1.9.2
+* em-mongo will not run under JRuby. We'd love some help figuring out why :) 
+* Compatibility with other runtimes is unknown
+
+== Still Missing / TODO
+* Replica Sets
+* GRIDFS support
+* Connection pooling
+* PK factories
+* JRuby support
 
 == Contact
 
