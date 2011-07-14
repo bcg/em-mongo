@@ -1,7 +1,6 @@
 module EM::Mongo
   class Collection
     attr_accessor :connection
-    attr_reader :pk_factory, :hint
 
     # Initialize a collection object.
     #
