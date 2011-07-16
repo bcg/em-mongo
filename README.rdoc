@@ -122,7 +122,7 @@ In addition to calling your errback if the write fails, you can provide the usua
 
 em-mongo now has some YARD docs. These are mostly ported directly from the mongo-ruby-driver. While they have been updated to reflect em-mongo's async API, there are probably a few errors left over in the translation. Please file an issue or submit a pull request if you notice any inaccuracies. 
 
-http://rubydoc.info/github/bcg/em-mongo/master
+http://rubydoc.info/github/bcg/em-mongo/master/frames
 
 == Upgrading
   
