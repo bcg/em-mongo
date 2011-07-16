@@ -5,6 +5,28 @@ module EM::Mongo
   DEFAULT_NS         = "ns"
   DEFAULT_QUERY_DOCS = 101
 
+  OP_REPLY        = 1
+  OP_MSG          = 1000
+  OP_UPDATE       = 2001
+  OP_INSERT       = 2002
+  OP_QUERY        = 2004
+  OP_GET_MORE     = 2005
+  OP_DELETE       = 2006
+  OP_KILL_CURSORS = 2007
+
+  OP_QUERY_TAILABLE          = 2 ** 1
+  OP_QUERY_SLAVE_OK          = 2 ** 2
+  OP_QUERY_OPLOG_REPLAY      = 2 ** 3
+  OP_QUERY_NO_CURSOR_TIMEOUT = 2 ** 4
+  OP_QUERY_AWAIT_DATA        = 2 ** 5
+  OP_QUERY_EXHAUST           = 2 ** 6
+
+  ASCENDING  =  1
+  DESCENDING = -1
+  GEO2D      = '2d'
+
+  DEFAULT_MAX_BSON_SIZE = 4 * 1024 * 1024
+
   class EMConnection < EM::Connection
     MAX_RETRIES = 5
 
@@ -16,12 +38,6 @@ module EM::Mongo
     include EM::Deferrable
 
     RESERVED    = 0
-    OP_REPLY    = 1
-    OP_MSG      = 1000
-    OP_UPDATE   = 2001
-    OP_INSERT   = 2002
-    OP_QUERY    = 2004
-    OP_DELETE   = 2006
 
     STANDARD_HEADER_SIZE = 16
     RESPONSE_HEADER_SIZE = 20
@@ -40,8 +56,35 @@ module EM::Mongo
       @request_id += 1
     end
 
+    def slave_ok?
+      @slave_ok
+    end
+
     # MongoDB Commands
 
+    def prepare_message(op, message, options={})
+      req_id = new_request_id
+      message.prepend!(message_headers(op, req_id, message))
+      req_id = prepare_safe_message(message,options) if options[:safe]
+      [req_id, message.to_s]
+    end
+
+    def prepare_safe_message(message,options)
+        db_name = options[:db_name]
+        unless db_name
+          raise( ArgumentError, "You must include the :db_name option when :safe => true" )
+        end
+
+        last_error_params = options[:last_error_params] || false
+        last_error_message = BSON::ByteBuffer.new
+
+        build_last_error_message(last_error_message, db_name, last_error_params)
+        last_error_id = new_request_id
+        last_error_message.prepend!(message_headers(EM::Mongo::OP_QUERY, last_error_id, last_error_message))
+        message.append!(last_error_message)
+        last_error_id
+    end
+    
     def message_headers(operation, request_id, message)
       headers = BSON::ByteBuffer.new
       headers.put_int(16 + message.size)
@@ -51,73 +94,15 @@ module EM::Mongo
       headers
     end
 
-    def send_command(buffer, request_id, &blk)
+    def send_command(op, message, options={}, &cb)
+      request_id, buffer = prepare_message(op, message, options)
+
       callback do
         send_data buffer
       end
 
-      @responses[request_id] = blk if blk
+      @responses[request_id] = cb if cb
       request_id
-    end
-
-    def insert(collection_name, documents)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-
-      documents = [documents] if not documents.is_a?(Array)
-      documents.each { |doc| message.put_array(BSON::BSON_CODER.serialize(doc, true, true).to_a) }
-
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_INSERT, req_id, message))
-      send_command(message.to_s, req_id)
-    end
-
-    def update(collection_name, selector, document, options)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-
-      flags  = 0
-      flags += 1 if options[:upsert]
-      flags += 2 if options[:multi]
-      message.put_int(flags)
-
-      message.put_array(BSON::BSON_CODER.serialize(selector, true, true).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(document, false, true).to_a)
-
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_UPDATE, req_id, message))
-      send_command(message.to_s, req_id)
-    end
-
-    def delete(collection_name, selector)
-      message = BSON::ByteBuffer.new([0, 0, 0, 0])
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-      message.put_int(0)
-      message.put_array(BSON::BSON_CODER.serialize(selector, false, true).to_a)
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_DELETE, req_id, message))
-      send_command(message.to_s, req_id)
-    end
-
-    def find(collection_name, skip, limit, order, query, fields, &blk)
-      message = BSON::ByteBuffer.new
-      message.put_int(RESERVED) # query options
-      BSON::BSON_RUBY.serialize_cstr(message, collection_name)
-      message.put_int(skip)
-      message.put_int(limit)
-      query = order.nil? ? query : construct_query_spec(query, order)
-      message.put_array(BSON::BSON_CODER.serialize(query, false).to_a)
-      message.put_array(BSON::BSON_CODER.serialize(fields, false).to_a) if fields
-      req_id = new_request_id
-      message.prepend!(message_headers(OP_QUERY, req_id, message))
-      send_command(message.to_s, req_id, &blk)
-    end
-
-    def construct_query_spec(query, order)
-      spec = BSON::OrderedHash.new
-      spec['$query']    = query
-      spec['$orderby']  = Mongo::Support.format_order_clause(order) if order
-      spec
     end
 
     # EM hooks
@@ -130,6 +115,7 @@ module EM::Mongo
       @port          = options[:port]        || DEFAULT_PORT
       @on_unbind     = options[:unbind_cb]   || proc {}
       @reconnect_in  = options[:reconnect_in]|| false
+      @slave_ok      = options[:slave_ok]    || false
 
       @on_close = proc {
         raise Error, "failure with mongodb server #{@host}:#{@port}"
@@ -172,9 +158,9 @@ module EM::Mongo
 
       @buffer.rewind
       while message_received?(@buffer)
-        response_to, docs= next_response
-        callback = @responses.delete(response_to)
-        callback.call(docs) if callback
+        response = next_response
+        callback = @responses.delete(response.response_to)
+        callback.call(response) if callback
       end
 
       if @buffer.more?
@@ -190,33 +176,12 @@ module EM::Mongo
     end
 
     def next_response()
-
-      # Header
-      size        = @buffer.get_int
-      request_id  = @buffer.get_int
-      response_to = @buffer.get_int
-      op          = @buffer.get_int
-      #puts "message header #{size} #{request_id} #{response_to} #{op}"
-
-      # Response Header
-      result_flags     = @buffer.get_int
-      cursor_id        = @buffer.get_long
-      starting_from    = @buffer.get_int
-      number_returned  = @buffer.get_int
-      #puts "response header #{result_flags} #{cursor_id} #{starting_from} #{number_returned}"
-
-      # Documents
-      docs = (1..number_returned).map do
-        size= peek_size(@buffer)
-        buf = @buffer.get(size)
-        BSON::BSON_CODER.deserialize(buf)
-      end
-      [response_to,docs]
+      ServerResponse.new(@buffer, self)
     end
 
     def unbind
       if @is_connected
-        @responses.values.each { |blk| blk.call(:disconnected) }
+        @responses.values.each { |resp| resp.call(:disconnected) }
 
         @request_id = 0
         @responses = {}
@@ -246,26 +211,66 @@ module EM::Mongo
       end
     end
 
+     # Constructs a getlasterror message. This method is used exclusively by
+    # Connection#send_message_with_safe_check.
+    #
+    # Because it modifies message by reference, we don't need to return it.
+    def build_last_error_message(message, db_name, opts)
+      message.put_int(0)
+      BSON::BSON_RUBY.serialize_cstr(message, "#{db_name}.$cmd")
+      message.put_int(0)
+      message.put_int(-1)
+      cmd = BSON::OrderedHash.new
+      cmd[:getlasterror] = 1
+      if opts.is_a?(Hash)
+        opts.assert_valid_keys(:w, :wtimeout, :fsync)
+        cmd.merge!(opts)
+      end
+      message.put_binary(BSON::BSON_CODER.serialize(cmd, false).to_s)
+      nil
+    end
+
   end
 
+  # An em-mongo Connection
   class Connection
 
+    # Initialize and connect to a MongoDB instance
+    # @param [String] host the host name or IP of the mongodb server to connect to
+    # @param [Integer] port the port the mongodb server is listening on
+    # @param [Integer] timeout the connection timeout
+    # @opts [Hash] opts connection options
     def initialize(host = DEFAULT_IP, port = DEFAULT_PORT, timeout = nil, opts = {})
       @em_connection = EMConnection.connect(host, port, timeout, opts)
       @db = {}
     end
 
+    # Return a database with the given name.
+    #
+    # @param [String] db_name a valid database name.
+    #
+    # @return [EM::Mongo::Database]
     def db(name = DEFAULT_DB)
-      @db[name] ||= EM::Mongo::Database.new(name, @em_connection)
+      @db[name] ||= EM::Mongo::Database.new(name, self)
     end
 
+    # Close the connection to the database.
     def close
       @em_connection.close
     end
 
+    #@return [true, false]
+    #  whether or not the connection is currently connected
     def connected?
       @em_connection.connected?
     end
+   
+    def send_command(*args, &block);@em_connection.send_command(*args, &block);end
+
+    # Is it okay to connect to a slave?
+    #
+    # @return [Boolean]
+    def slave_ok?;@em_connection.slave_ok?;end
 
   end
 end

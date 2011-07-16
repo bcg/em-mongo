@@ -18,9 +18,9 @@
 
 require 'digest/md5'
 
-module Mongo
+module EM::Mongo
   module Support
-    include Mongo::Conversions
+    include EM::Mongo::Conversions
     extend self
 
     # Generate an MD5 for authentication.
@@ -52,10 +52,10 @@ module Mongo
 
       [" ", ".", "$", "/", "\\"].each do |invalid_char|
         if db_name.include? invalid_char
-          raise Mongo::InvalidNSName, "database names cannot contain the character '#{invalid_char}'"
+          raise EM::Mongo::InvalidNSName, "database names cannot contain the character '#{invalid_char}'"
         end
       end
-      raise Mongo::InvalidNSName, "database name cannot be the empty string" if db_name.empty?
+      raise EM::Mongo::InvalidNSName, "database name cannot be the empty string" if db_name.empty?
       db_name
     end
 
