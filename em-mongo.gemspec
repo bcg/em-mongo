@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
   s.name    = 'em-mongo'
   s.version = version
 
-  s.authors = ['bcg']
+  s.authors = ['bcg', 'PlasticLizard']
   s.email   = 'brenden.grace@gmail.com'
   s.date    = "2010-12-01"
 
