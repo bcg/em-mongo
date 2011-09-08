@@ -70,9 +70,10 @@ module EM::Mongo
       response = RequestResponse.new
       name_resp = collection_names
       name_resp.callback do |names|
-        response.succeed names.map do |name|
+        collections = names.map do |name|
           EM::Mongo::Collection.new(@db_name, name, @em_connection)
         end
+        response.succeed collections
       end
       name_resp.errback { |err| response.fail err }
       response
