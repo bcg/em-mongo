@@ -703,6 +703,7 @@ module EM::Mongo
       unless has_id?(doc)
         key = doc.keys.first.kind_of?(Symbol) ? :_id : '_id'
         doc[key] = BSON::ObjectId.new
+      end
       doc
     end
 
