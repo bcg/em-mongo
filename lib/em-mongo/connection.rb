@@ -84,7 +84,7 @@ module EM::Mongo
         message.append!(last_error_message)
         last_error_id
     end
-    
+
     def message_headers(operation, request_id, message)
       headers = BSON::ByteBuffer.new
       headers.put_int(16 + message.size)
@@ -264,7 +264,7 @@ module EM::Mongo
     def connected?
       @em_connection.connected?
     end
-   
+
     def send_command(*args, &block);@em_connection.send_command(*args, &block);end
 
     # Is it okay to connect to a slave?

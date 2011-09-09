@@ -240,7 +240,7 @@ describe EMMongo::Collection do
           done
         end
       end
-      
+
       it "should respond with an error when an invalid document is saved" do
         @conn, @coll = connection_and_collection('safe.test')
         @coll.create_index("hello", :unique => true)
@@ -285,8 +285,8 @@ describe EMMongo::Collection do
         @conn, @coll = connection_and_collection('safe.update.test')
         @coll.create_index("x", :unique => true)
         @coll.insert({"x" => 5})
-        @coll.insert({"x" => 10}) 
-       
+        @coll.insert({"x" => 10})
+
         @coll.safe_update({},{"x" => 10}).errback do |err|
           err[0].should == EM::Mongo::OperationFailure
           done
@@ -297,7 +297,7 @@ describe EMMongo::Collection do
   end
 
   describe "save" do
-    
+
     it "should insert a record when no id is present" do
       @conn, @coll = connection_and_collection
       id = @coll.save("x" => 1)
@@ -325,8 +325,8 @@ describe EMMongo::Collection do
         @conn, @coll = connection_and_collection('safe.save.test')
         @coll.create_index("x", :unique => true)
         @coll.save({"x" => 5})
-        @coll.save({"x" => 5}) 
-       
+        @coll.save({"x" => 5})
+
         @coll.safe_save({"x" => 5}).errback do |err|
           err[0].should == EM::Mongo::OperationFailure
           done
@@ -363,7 +363,7 @@ describe EMMongo::Collection do
   end
 
   describe "find_and_modify" do
-    
+
     it "should find and modify a document" do
       @conn, @coll = connection_and_collection
       @coll << { :a => 1, :processed => false }
@@ -448,7 +448,7 @@ describe EMMongo::Collection do
       res = @coll.map_reduce(m, r, :query => {"user_id" => {"$gt" => 1}}, :out => 'foo')
       res.callback do |collection|
         collection.count .callback do |c|
-          c.should == 2  
+          c.should == 2
           collection.find_one({"_id" => 2}).callback do |doc|
             doc.should_not be_nil
             collection.find_one({"_id" => 3}).callback do |doc2|
@@ -641,7 +641,7 @@ describe EMMongo::Collection do
         done
       end
     end
-    
+
     it "should create a geospatial index" do
       @conn, @geo = connection_and_collection('geo')
       @geo.save({'loc' => [-100, 100]})
@@ -649,8 +649,8 @@ describe EMMongo::Collection do
       @geo.index_information.callback do |info|
         info['loc_2d'].should_not be_nil
         done
-      end  
-    end 
+      end
+    end
 
     it "should create a unique index" do
       @conn, @collection = connection_and_collection('test-collection')
@@ -722,21 +722,21 @@ describe EMMongo::Collection do
         done
       end
     end
-    
+
     it "should drop an index" do
       @conn, @collection = connection_and_collection('test-collection')
       @collection.create_index([['a',EM::Mongo::ASCENDING]])
       @collection.index_information.callback do |info|
         info['a_1'].should_not be_nil
-        @collection.drop_index([['a',EM::Mongo::ASCENDING]]).callback do 
+        @collection.drop_index([['a',EM::Mongo::ASCENDING]]).callback do
           @collection.index_information.callback do |info|
             info['a_1'].should be_nil
             done
           end
         end
       end
-      
-    end    
+
+    end
   end
 
   it 'should handle multiple pending queries' do
