@@ -700,8 +700,9 @@ module EM::Mongo
     end
 
     def sanitize_id!(doc)
-      doc[:_id] = has_id?(doc) || BSON::ObjectId.new
-      doc.delete('_id')
+      unless has_id?(doc)
+        key = doc.keys.first.kind_of?(Symbol) ? :_id : '_id'
+        doc[key] = BSON::ObjectId.new
       doc
     end
 
