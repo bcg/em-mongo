@@ -27,7 +27,7 @@ EM.run do
       docs.each do |doc|
         puts "Revolution ##{doc['revolution']}"
       end
-    end  
+    end
 
     collection.drop
 

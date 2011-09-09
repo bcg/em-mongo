@@ -177,7 +177,7 @@ module EM::Mongo
       oh[:index] = index_name.to_s
       cmd_resp = command(oh, :check_response => false)
       cmd_resp.callback do |doc|
-        if EM::Mongo::Support.ok?(doc) 
+        if EM::Mongo::Support.ok?(doc)
           response.succeed(true)
         else
           response.fail [MongoDBError, "Error with drop_index command: #{doc.inspect}"]
@@ -275,7 +275,7 @@ module EM::Mongo
       "#{name}.#{collection_name}"
     end
 
-   
+
 
     # Send a command to the database.
     #
@@ -300,7 +300,7 @@ module EM::Mongo
     def command(selector, opts={})
       check_response = opts.fetch(:check_response, true)
       raise MongoArgumentError, "command must be given a selector" unless selector.is_a?(Hash) && !selector.empty?
-      
+
       if selector.keys.length > 1 && RUBY_VERSION < '1.9' && selector.class != BSON::OrderedHash
         raise MongoArgumentError, "DB#command requires an OrderedHash when hash contains multiple keys"
       end
@@ -308,7 +308,7 @@ module EM::Mongo
       response = RequestResponse.new
       cmd_resp = Cursor.new(self.collection(SYSTEM_COMMAND_COLLECTION), :limit => -1, :selector => selector).next_document
 
-      cmd_resp.callback do |doc|  
+      cmd_resp.callback do |doc|
         if doc.nil?
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: returned null."])
         elsif (check_response && !EM::Mongo::Support.ok?(doc))
@@ -346,7 +346,7 @@ module EM::Mongo
           auth                 = BSON::OrderedHash.new
           auth['authenticate'] = 1
           auth['user']         = username
-          auth['nonce']        = res['nonce']   
+          auth['nonce']        = res['nonce']
           auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
 
           auth_resp2 = self.collection(SYSTEM_COMMAND_COLLECTION).first(auth)

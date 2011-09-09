@@ -100,7 +100,7 @@ module EM::Mongo
       return response.succeed(nil) if doc.nil?
 
       if doc['$err']
-        
+
         err = doc['$err']
 
         # If the server has stopped being the master (e.g., it's one of a
@@ -112,7 +112,7 @@ module EM::Mongo
         else
           response.fail([OperationFailure, err])
         end
-      
+
       else
         response.succeed(
           @transformer ? @transformer.call(doc) : doc
@@ -180,7 +180,7 @@ module EM::Mongo
     # This method overrides any sort order specified in the Collection#find
     # method, and only the last sort applied has an effect.
     #
-    # @param [Symbol, Array] key_or_list either 1) a key to sort by or 2) 
+    # @param [Symbol, Array] key_or_list either 1) a key to sort by or 2)
     #   an array of [key, direction] pairs to sort by. Direction should
     #   be specified as EM::Mongo::ASCENDING (or :ascending / :asc) or EM::Mongo::DESCENDING (or :descending / :desc)
     #
@@ -308,10 +308,10 @@ module EM::Mongo
         elsif doc
           items << doc
         else
-          response.succeed(items) 
+          response.succeed(items)
         end
       end
-      response 
+      response
     end
 
     # Get the explain plan for this cursor.
@@ -322,7 +322,7 @@ module EM::Mongo
     def explain
       response = RequestResponse.new
       c = Cursor.new(@collection, query_options_hash.merge(:limit => -@limit.abs, :explain => true))
-      
+
       exp_response = c.next_document
       exp_response.callback do |explanation|
         c.close

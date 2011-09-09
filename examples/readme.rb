@@ -11,15 +11,15 @@ EM.run do
     end
 
     #find returns an EM::Mongo::Cursor
-    cursor = collection.find 
+    cursor = collection.find
 
     #most cursor methods return an EM::Mongo::RequestResponse,
     #which is an EventMachine::Deferrable
-    resp = cursor.to_a 
+    resp = cursor.to_a
 
-    #when em-mongo IO methods succeed, they 
+    #when em-mongo IO methods succeed, they
     #will always call back with the return
-    #value you would have expected from the 
+    #value you would have expected from the
     #synchronous version of the method from
     #the mongo-ruby-driver
     resp.callback do |documents|
@@ -39,7 +39,7 @@ EM.run do
       if doc
         puts "Revolution ##{doc['revolution']}"
       end
-    end  
+    end
 
     #add an index
     collection.create_index [[:revolution, -1]]

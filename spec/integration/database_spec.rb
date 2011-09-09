@@ -7,7 +7,7 @@ describe EMMongo::Database do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
     @db.collection(EM::Mongo::Database::SYSTEM_USER_COLLECTION).remove({})
-    @db.add_user('test', 'test').callback do |res| 
+    @db.add_user('test', 'test').callback do |res|
       res.should_not == nil
       res.should be_a_kind_of(BSON::ObjectId)
       done
@@ -22,7 +22,7 @@ describe EMMongo::Database do
       res.should == true
       done
     end
-  end  
+  end
 
   it "should create a collection" do
     @conn = EM::Mongo::Connection.new
@@ -76,15 +76,15 @@ describe EMMongo::Database do
       end
     end
   end
-  
+
   it 'should cache collections correctly' do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
     a = @db.collection('first_collection')
     b = @db.collection('second_collection')
-    a.should_not == b                      
+    a.should_not == b
     @db.collection('first_collection').should == a
-    @db.collection('second_collection').should == b            
+    @db.collection('second_collection').should == b
     done
   end
 
@@ -94,7 +94,7 @@ describe EMMongo::Database do
         @conn = EM::Mongo::Connection.new
         @db = @conn.db
         @db.reset_error_history.callback do
-          @db.get_last_error.callback do |doc| 
+          @db.get_last_error.callback do |doc|
             doc['err'].should be_nil
             done
           end
@@ -116,7 +116,7 @@ describe EMMongo::Database do
         @conn = EM::Mongo::Connection.new
         @db = @conn.db
         @db.command({:forceerror=>1}, :check_response => false).callback do
-          @db.get_last_error.callback do |doc| 
+          @db.get_last_error.callback do |doc|
             doc['err'].should_not be_nil
             done
           end
