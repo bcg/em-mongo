@@ -25,7 +25,7 @@ module EM::Mongo #:nodoc:
     DESCENDING_CONVERSION = ["descending", "desc", "-1"]
 
     # Converts the supplied +Array+ to a +Hash+ to pass to mongo as
-    # sorting parameters. The returned +Hash+ will vary depending 
+    # sorting parameters. The returned +Hash+ will vary depending
     # on whether the passed +Array+ is one or two dimensional.
     #
     # Example:
@@ -67,7 +67,7 @@ module EM::Mongo #:nodoc:
       { str => 1 }
     end
 
-    # Converts the +String+, +Symbol+, or +Integer+ to the 
+    # Converts the +String+, +Symbol+, or +Integer+ to the
     # corresponding sort value in MongoDB.
     #
     # Valid conversions (case-insensitive):

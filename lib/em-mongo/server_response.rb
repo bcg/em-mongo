@@ -1,7 +1,7 @@
 module EM::Mongo
   class ServerResponse
 
-    attr_reader :size, :request_id, :response_to, :op, 
+    attr_reader :size, :request_id, :response_to, :op,
       :result_flags, :cursor_id, :starting_from,
       :number_returned, :docs, :connection
 
@@ -27,6 +27,6 @@ module EM::Mongo
         BSON::BSON_CODER.deserialize(buf)
       end
     end
-    
+
   end
 end

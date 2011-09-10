@@ -121,14 +121,14 @@ module EM::Mongo
       raise RuntimeError, "Unknown options [#{opts.inspect}]" unless opts.empty?
 
       EM::Mongo::Cursor.new(self, {
-        :selector    => selector, 
-        :fields      => fields, 
-        :skip        => skip, 
+        :selector    => selector,
+        :fields      => fields,
+        :skip        => skip,
         :limit       => limit,
-        :order       => sort, 
-        :hint        => hint, 
-        :snapshot    => snapshot, 
-        :timeout     => timeout, 
+        :order       => sort,
+        :hint        => hint,
+        :snapshot    => snapshot,
+        :timeout     => timeout,
         :batch_size  => batch_size,
         :transformer => transformer,
         :max_scan    => max_scan,
@@ -142,8 +142,8 @@ module EM::Mongo
     # @return [EM::Mongo::RequestResponse]
     #   calls back with a single document or nil if no result is found.
     #
-    # @param [Hash, ObjectId, Nil] spec_or_object_id a hash specifying elements 
-    #   which must be present for a document to be included in the result set or an 
+    # @param [Hash, ObjectId, Nil] spec_or_object_id a hash specifying elements
+    #   which must be present for a document to be included in the result set or an
     #   instance of ObjectId to be used as the value for an _id query.
     #   If nil, an empty selector, {}, will be used.
     #
@@ -256,7 +256,7 @@ module EM::Mongo
     # @option opts [Boolean] :upsert (+false+) if true, performs an upsert (update or insert)
     # @option opts [Boolean] :multi (+false+) update all documents matching the selector, as opposed to
     #   just the first matching document. Note: only works in MongoDB 1.1.3 or later.
-    # @option opts [Boolean] :safe (+true+) 
+    # @option opts [Boolean] :safe (+true+)
     #   If true, check that the save succeeded. OperationFailure
     #   will be raised on an error. Note that a safe check requires an extra
     #   round-trip to the database. Safe options provided here will override any safe
@@ -700,8 +700,10 @@ module EM::Mongo
     end
 
     def sanitize_id!(doc)
-      doc[:_id] = has_id?(doc) || BSON::ObjectId.new
-      doc.delete('_id')
+      unless has_id?(doc)
+        key = doc.keys.first.kind_of?(Symbol) ? :_id : '_id'
+        doc[key] = BSON::ObjectId.new
+      end
       doc
     end
 
@@ -717,7 +719,7 @@ module EM::Mongo
         message.put_binary(BSON::BSON_CODER.serialize(doc, check_keys, true).to_s)
       end
       raise InvalidOperation, "Exceded maximum insert size of 16,000,000 bytes" if message.size > 16_000_000
-      
+
       ids = documents.collect { |o| o[:_id] || o['_id'] }
 
       if safe_options[:safe]
@@ -773,12 +775,12 @@ module EM::Mongo
           if [EM::Mongo::ASCENDING, EM::Mongo::DESCENDING, EM::Mongo::GEO2D].include?(f[1])
             field_spec[f[0].to_s] = f[1]
           else
-            raise MongoArgumentError, "Invalid index field #{f[1].inspect}; " + 
+            raise MongoArgumentError, "Invalid index field #{f[1].inspect}; " +
               "should be one of Mongo::ASCENDING (1), Mongo::DESCENDING (-1) or Mongo::GEO2D ('2d')."
           end
         end
       else
-        raise MongoArgumentError, "Invalid index specification #{spec.inspect}; " + 
+        raise MongoArgumentError, "Invalid index specification #{spec.inspect}; " +
           "should be either a string, symbol, or an array of arrays."
       end
       field_spec

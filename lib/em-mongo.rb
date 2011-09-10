@@ -9,9 +9,9 @@ module EM::Mongo
 
   module Version
     STRING = File.read(File.dirname(__FILE__) + '/../VERSION')
-    MAJOR, MINOR, TINY = STRING.split('.') 
+    MAJOR, MINOR, TINY = STRING.split('.')
   end
- 
+
   NAME    = 'em-mongo'
   LIBPATH = ::File.expand_path(::File.dirname(__FILE__)) + ::File::SEPARATOR
   PATH    = ::File.dirname(LIBPATH) + ::File::SEPARATOR

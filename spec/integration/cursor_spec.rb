@@ -255,7 +255,7 @@ describe EMMongo::Cursor do
       cursor = EM::Mongo::Cursor.new(@coll).sort(["x", :desc])
       cursor.next_document.callback do |first|
         lambda { cursor.sort("x",1) }.should raise_error EM::Mongo::InvalidOperation
-        done  
+        done
       end
     end
 
@@ -267,7 +267,7 @@ describe EMMongo::Cursor do
       cursor = EM::Mongo::Cursor.new(@coll).sort(["x", :desc])
       cursor.next_document.callback do |first|
         first["x"].year.should == 2004
-        done  
+        done
       end
     end
 

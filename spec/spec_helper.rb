@@ -13,7 +13,7 @@ require File.expand_path('../lib/em-mongo', File.dirname(__FILE__))
 require "em-spec/rspec"
 
 def connection_and_collection(collection_name=EM::Mongo::DEFAULT_NS)
-  conn = EMMongo::Connection.new 
+  conn = EMMongo::Connection.new
   return conn, collection(conn, collection_name)
 end
 
