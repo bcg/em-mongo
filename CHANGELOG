@@ -1,3 +1,8 @@
+- 0.4.1
+
+ * fix collection response value on success (pawelpacana)
+ * whitepsace (pawelpacana)
+
 - 0.4.0
 
  * added a Cursor implementation
