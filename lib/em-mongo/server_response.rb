@@ -24,7 +24,7 @@ module EM::Mongo
       @docs = (1..number_returned).map do
         size= @connection.peek_size(buffer)
         buf = buffer.get(size)
-        BSON::BSON_CODER.deserialize(buf)
+        BSON::BSON_CODER.deserialize(buf.pack("c*"))
       end
     end
 
