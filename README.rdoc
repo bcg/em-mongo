@@ -32,7 +32,7 @@ For operations that require IO, em-mongo always returns an EventMachine deferrab
       #most cursor methods return an EM::Mongo::RequestResponse,
       #which is an EventMachine::Deferrable
 
-      resp = cursor.to_a 
+      resp = cursor.defer_as_a
 
       #when em-mongo IO methods succeed, they 
       #will always call back with the return
@@ -85,11 +85,11 @@ em-mongo will present errors in two different ways. First, em-mongo will raise e
 
 Errors returned by the database, or errors communicating with the database, will be delivered via standard EM::Deferrable errbacks. While it is tempting to subscribe just to a callback
 
-  my_colletion.find.to_a.callback {|docs| ... }
+  my_colletion.find.defer_as_a.callback {|docs| ... }
 
 in the case of an error you will never receive a response. If you are waiting for a response before your program continues, you will be waiting a very long time. A better approach would be to store the deferrable into a variable and subscribe to its callback and errback
 
-  resp = my_collection.find.to_a
+  resp = my_collection.find.defer_as_a
   resp.callback { |docs| ... }
   resp.errback { |err| raise *err }
 
@@ -136,13 +136,13 @@ to this
 
   my_collection.first().callback { |doc| p doc }
 
-EM::Mongo::Collection#find now returns a cursor, not an array, to maintain compatibility with the mongo-ruby-driver. This provides a great deal more flexibility, but requires you to select a specific cursor method to actually fetch data from the server, such as #to_a or #next
+EM::Mongo::Collection#find now returns a cursor, not an array, to maintain compatibility with the mongo-ruby-driver. This provides a great deal more flexibility, but requires you to select a specific cursor method to actually fetch data from the server, such as #defer_as_a or #next
 
   my_collection.find() { |docs| ... }
 
 becomes
 
-  my_collection.find.to_a.callback { |docs| ... }
+  my_collection.find.defer_as_a.callback { |docs| ... }
 
 If for some reason you aren't ready to upgrade your project but you want to be able to use the newer gem, you can require a compatibility file that will revert the new API to the API found in 0.3.6
 
