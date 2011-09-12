@@ -154,7 +154,7 @@ module EM::Mongo
 
     def receive_data(data)
 
-      @buffer.append!(BSON::ByteBuffer.new(data.unpack('C*')))
+      @buffer.append!(data)
 
       @buffer.rewind
       while message_received?(@buffer)
@@ -165,7 +165,7 @@ module EM::Mongo
 
       if @buffer.more?
         remaining_bytes= @buffer.size-@buffer.position
-        @buffer = BSON::ByteBuffer.new(@buffer.get(remaining_bytes))
+        @buffer = BSON::ByteBuffer.new(@buffer.to_s[@buffer.position,remaining_bytes])
         @buffer.rewind
       else
         @buffer.clear
