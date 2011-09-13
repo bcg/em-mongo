@@ -30,9 +30,8 @@ class MongoRunner
     end
   end
 end
-
+require "rubygems"
 spec = eval(File.read('em-mongo.gemspec'))
-
 namespace :bundle do
   task :install do
     if `bundle check` =~ /bundle install/
@@ -101,23 +100,23 @@ namespace :spec do
     desc "default tests"
     task :default => ['bundle:install'] do
       MongoRunner.run do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        system "bundle exec rspec #{spec.test_files.join(' ')} -b -c -fd"
       end
     end
 
     desc "exhaustive tests"
     task :exhaustive => ['bundle:install'] do
       MongoRunner.run({:noclean => true}) do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        system "bundle exec rspec #{spec.test_files.join(' ')}  -b -c -fd"
       end
       MongoRunner.run({:auth => true}) do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        system "bundle exec rspec #{spec.test_files.join(' ')}  -b -c -fd"
       end
     end
 
     desc "default tests, but don't start mongodb for me"
     task :no_mongo => ['bundle:install'] do
-      system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+      system "bundle exec rspec #{spec.test_files.join(' ')}  -b -c -fd"
     end
 
   end
