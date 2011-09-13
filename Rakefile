@@ -15,18 +15,17 @@ task :default => 'spec:integration:default'
 class MongoRunner
   def self.run(options={}) 
     auth = "--auth" if options[:auth]
-    dir = Dir.tmpdir 
-    FileUtils.rm_r Dir.glob("#{dir}/*") unless options[:noclean]
+    dir = Dir.tmpdir + "/em-mongo-tests-#$$"
+    FileUtils.mkdir dir
     pidf = "#{dir}/mongod.pid"
     logf = "#{dir}/mongo.log"
     begin
-      #puts "mongod run #{auth} --fork -vvvvvvv --dbpath #{dir} --pidfilepath #{pidf} --logpath #{logf} >> /dev/null "
       system "mongod run #{auth} --fork -vvvvvvv --dbpath #{dir} --pidfilepath #{pidf} --logpath #{logf} >> /dev/null "
       yield if block_given?
     ensure
       if File.exists?(pidf) and File.read(pidf).to_i != 0
         Process.kill("KILL", File.read(pidf).to_i)
-        FileUtils.rm_r Dir.glob("#{dir}/*") unless options[:noclean]
+        FileUtils.rm_r dir unless options[:noclean]
       end
     end
   end
