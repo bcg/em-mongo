@@ -15,7 +15,7 @@ task :default => 'spec:integration:default'
 class MongoRunner
   def self.run(options={}) 
     auth = "--auth" if options[:auth]
-    dir = Dir.tmpdir 
+    dir = Dir.tmpdir + "/em-mongo-tests-#$$"
     FileUtils.rm_r Dir.glob("#{dir}/*") unless options[:noclean]
     pidf = "#{dir}/mongod.pid"
     logf = "#{dir}/mongo.log"
