@@ -24,6 +24,5 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'eventmachine', ['>= 0.12.10'] 
   s.add_dependency 'bson', ['>= 1.1.3'] 
-  s.add_dependency 'bson_ext', ['>= 1.1.3'] 
 
 end
