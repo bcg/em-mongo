@@ -21,10 +21,13 @@ module EM::Mongo
       @number_returned  = buffer.get_int
 
       # Documents
-      @docs = (1..number_returned).map do
+      pos = buffer.position
+      @docs = (1..@number_returned).map do
         size= @connection.peek_size(buffer)
-        buf = buffer.get(size)
-        BSON::BSON_CODER.deserialize(buf)
+        doc = BSON::BSON_CODER.deserialize(buffer.to_s[pos,size])
+        pos += size
+        buffer.position = pos
+        doc
       end
     end
 
