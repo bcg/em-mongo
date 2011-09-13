@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.rubyforge_project = 'em-mongo'
 
   s.files      = Dir['VERSION', 'lib/**/*']
-  s.test_files = Dir['spec/integration/**/*']
+  s.test_files = Dir['spec/integration/**/*.rb']
 
   s.rdoc_options  = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
