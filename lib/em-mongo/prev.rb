@@ -6,7 +6,7 @@ module EM
       def find(selector={}, opts={}, &blk)
         raise "find requires a block" if not block_given?
 
-        new_find(selector, opts).to_a.callback do |docs|
+        new_find(selector, opts).defer_as_a.callback do |docs|
           blk.call(docs)
         end
       end
@@ -38,7 +38,7 @@ module EM
 
       def find(collection_name, skip, limit, order, query, fields, &blk)
         db_name, col_name = db_and_col_name(collection_name)
-        db(db_name).collection(col_name).find(query, :skip=>skip,:limit=>limit,:order=>order,:fields=>fields).to_a.callback do |docs|
+        db(db_name).collection(col_name).find(query, :skip=>skip,:limit=>limit,:order=>order,:fields=>fields).defer_as_a.callback do |docs|
           yield docs if block_given?
         end
       end

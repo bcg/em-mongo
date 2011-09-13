@@ -34,7 +34,7 @@ describe EMMongo::Cursor do
       @coll.save(all[-1])
     end
 
-    cursor.limit(5).skip(3).sort("x",1).to_a.callback do |results|
+    cursor.limit(5).skip(3).sort("x",1).defer_as_a.callback do |results|
       all.slice(3...8).each_with_index do |item,idx|
         results[idx]["x"].should == item["x"]
       end
@@ -49,7 +49,7 @@ describe EMMongo::Cursor do
     1501.times do |i|
       @coll.insert(i.to_s => i.to_s)
     end
-    cursor.limit(1500).to_a.callback do |docs|
+    cursor.limit(1500).defer_as_a.callback do |docs|
       docs.length.should == 1500
       done
     end
@@ -80,12 +80,12 @@ describe EMMongo::Cursor do
     100.times do |i|
       @coll.save("x" => 1)
     end
-    cursor.to_a.callback do |r1|
+    cursor.defer_as_a.callback do |r1|
       r1.length.should == 100
-      cursor.to_a.callback do |r2|
+      cursor.defer_as_a.callback do |r2|
         r2.length.should == 0
         cursor.rewind!
-        cursor.to_a.callback do |r3|
+        cursor.defer_as_a.callback do |r3|
           r3.length.should == 100
           done
         end
@@ -101,7 +101,7 @@ describe EMMongo::Cursor do
       1000.times do |i|
         @coll.save("x" => 1)
       end
-      cursor.to_a.callback do |results|
+      cursor.defer_as_a.callback do |results|
         results.length.should == 1000
         done
       end
@@ -290,14 +290,14 @@ describe EMMongo::Cursor do
       end
     end
 
-    describe "to_a" do
+    describe "defer_as_a" do
       it "should return an array of all documents in a query" do
         @conn, @coll = connection_and_collection
         5.times do |i|
           @coll.insert("x" => i)
         end
         cursor = EM::Mongo::Cursor.new(@coll).sort("x",1)
-        cursor.to_a.callback do |docs|
+        cursor.defer_as_a.callback do |docs|
           docs.length.should == 5
           5.times do |i|
             docs[i]["x"].should == i

@@ -299,7 +299,7 @@ module EM::Mongo
     # efficient to retrieve documents as you need them by iterating over the cursor.
     #
     # @return [EM::Mongo::RequestResponse] Calls back with an array of documents.
-    def to_a
+    def defer_as_a
       response = RequestResponse.new
       items = []
       self.each do |doc,err|
@@ -313,6 +313,9 @@ module EM::Mongo
       end
       response
     end
+
+    # XXX to_a is confusing but we will leave it for now
+    alias to_a defer_as_a
 
     # Get the explain plan for this cursor.
     #
