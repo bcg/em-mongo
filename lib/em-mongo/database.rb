@@ -52,7 +52,7 @@ module EM::Mongo
     # @return [EM::Mongo::RequestResponse]
     def collection_names
       response = RequestResponse.new
-      name_resp = collections_info.to_a
+      name_resp = collections_info.defer_as_a
       name_resp.callback do |docs|
         names = docs.collect{ |doc| doc['name'] || '' }
         names = names.delete_if {|name| name.index(self.name).nil? || name.index('$')}
@@ -200,7 +200,7 @@ module EM::Mongo
     def index_information(collection_name)
       response = RequestResponse.new
       sel  = {:ns => full_collection_name(collection_name)}
-      idx_resp = Cursor.new(self.collection(SYSTEM_INDEX_COLLECTION), :selector => sel).to_a
+      idx_resp = Cursor.new(self.collection(SYSTEM_INDEX_COLLECTION), :selector => sel).defer_as_a
       idx_resp.callback do |indexes|
         info = indexes.inject({}) do |info, index|
           info[index['name']] = index

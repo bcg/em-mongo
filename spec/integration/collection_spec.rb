@@ -32,7 +32,7 @@ describe EMMongo::Collection do
       @conn, @coll = connection_and_collection
 
       @coll.insert("hello" => 'world')
-      @coll.find({"hello" => "world"},{}).to_a.callback do |res|
+      @coll.find({"hello" => "world"},{}).defer_as_a.callback do |res|
         res.size.should >= 1
         res[0]["hello"].should == "world"
         done
@@ -54,7 +54,7 @@ describe EMMongo::Collection do
       @conn, @coll = connection_and_collection
 
       @coll.insert('hello' => 'world')
-      @coll.find({:hello => "world"},{}).to_a.callback do |res|
+      @coll.find({:hello => "world"},{}).defer_as_a.callback do |res|
         res.size.should >= 1
         res[0]["hello"].should == "world"
         done
@@ -65,7 +65,7 @@ describe EMMongo::Collection do
       @conn, @coll = connection_and_collection
 
       id = @coll.insert('hello' => 'world')
-      @coll.find({:_id => id},{}).to_a.callback do |res|
+      @coll.find({:_id => id},{}).defer_as_a.callback do |res|
         res.size.should >= 1
         res[0]['hello'].should == "world"
         done
@@ -77,7 +77,7 @@ describe EMMongo::Collection do
 
       @coll.insert('one' => 'one')
       @coll.insert('two' => 'two')
-      @coll.find.to_a.callback do |res|
+      @coll.find.defer_as_a.callback do |res|
         res.size.should >= 2
         done
       end
@@ -90,14 +90,14 @@ describe EMMongo::Collection do
       @coll.insert(:name => 'three', :position => 2)
       @coll.insert(:name => 'two', :position => 1)
 
-      @coll.find({}, {:order => 'position'}).to_a.callback do |res|
+      @coll.find({}, {:order => 'position'}).defer_as_a.callback do |res|
         res[0]["name"].should == 'one'
         res[1]["name"].should == 'two'
         res[2]["name"].should == 'three'
         done
       end
 
-      @coll.find({}, {:order => [:position, :desc]}).to_a.callback do |res|
+      @coll.find({}, {:order => [:position, :desc]}).defer_as_a.callback do |res|
         res[0]["name"].should == 'three'
         res[1]["name"].should == 'two'
         res[2]["name"].should == 'one'
@@ -141,7 +141,7 @@ describe EMMongo::Collection do
         @coll.insert({'num' => num, 'word' => word})
       end
 
-      @coll.find({'num' => {'$in' => [1,3,5]}}).to_a.callback do |res|
+      @coll.find({'num' => {'$in' => [1,3,5]}}).defer_as_a.callback do |res|
         res.size.should == 3
         res.map{|r| r['num'] }.sort.should == [1,3,5]
         done
@@ -155,7 +155,7 @@ describe EMMongo::Collection do
         @coll.insert('num' => num, 'word' => word)
       end
 
-      @coll.find({'num' => {'$gt' => 3}}).to_a.callback do |res|
+      @coll.find({'num' => {'$gt' => 3}}).defer_as_a.callback do |res|
         res.size.should == 6
         res.map{|r| r['num'] }.sort.should == [4,5,6,7,8,9]
         done
@@ -202,7 +202,7 @@ describe EMMongo::Collection do
 
       t = Time.now.utc.freeze
       @coll.insert('date' => t)
-      @coll.find.to_a.callback do |res|
+      @coll.find.defer_as_a.callback do |res|
         res[0]['date'].to_s.should == t.to_s
         done
       end
@@ -222,7 +222,7 @@ describe EMMongo::Collection do
         'regex' => /abc$/ix
       }
       retobj = @coll.insert(obj)
-      @coll.find({:_id => obj[:_id]}).to_a.callback do |ret|
+      @coll.find({:_id => obj[:_id]}).defer_as_a.callback do |ret|
         ret.size.should == 1
         ret[0].each_key do |key|
           next if key == '_id'
@@ -262,7 +262,7 @@ describe EMMongo::Collection do
 
       id = @coll.insert('hello' => 'world')
       @coll.update({'hello' => 'world'}, {'hello' => 'newworld'})
-      @coll.find({:_id => id},{}).to_a.callback do |res|
+      @coll.find({:_id => id},{}).defer_as_a.callback do |res|
         res[0]['hello'].should == 'newworld'
         done
       end
@@ -273,7 +273,7 @@ describe EMMongo::Collection do
 
       id = @coll.insert('hello' => 'world')
       @coll.update({'hello' => 'world'}, {'$inc' => {'count' => 1}})
-      @coll.find({:_id => id},{}).to_a.callback do |res|
+      @coll.find({:_id => id},{}).defer_as_a.callback do |res|
         res.first['hello'].should == 'world'
         res.first['count'].should == 1
         done
@@ -301,7 +301,7 @@ describe EMMongo::Collection do
     it "should insert a record when no id is present" do
       @conn, @coll = connection_and_collection
       id = @coll.save("x" => 1)
-      @coll.find("x" => 1).to_a.callback do |result|
+      @coll.find("x" => 1).defer_as_a.callback do |result|
         result[0]["_id"].should == id
         done
       end
@@ -313,7 +313,7 @@ describe EMMongo::Collection do
       id = @coll.save(doc)
       doc["x"] = 2
       @coll.save(doc).should be_true
-      @coll.find().to_a.callback do |result|
+      @coll.find().defer_as_a.callback do |result|
         result.count.should == 1
         result[0]["x"].should == 2
         done
@@ -342,7 +342,7 @@ describe EMMongo::Collection do
 
       id = @coll.insert('hello' => 'world')
       @coll.remove(:_id => id)
-      @coll.find({'hello' => "world"}).to_a.callback do |res|
+      @coll.find({'hello' => "world"}).defer_as_a.callback do |res|
         res.size.should == 0
         done
       end
@@ -354,7 +354,7 @@ describe EMMongo::Collection do
       @coll.insert('one' => 'one')
       @coll.insert('two' => 'two')
       @coll.remove
-      @coll.find.to_a.callback do |res|
+      @coll.find.defer_as_a.callback do |res|
         res.size.should == 0
         done
       end
