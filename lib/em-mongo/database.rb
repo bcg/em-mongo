@@ -114,7 +114,7 @@ module EM::Mongo
     #   already exists or collection creation fails on the server.
     #
     # @return [EM::Mongo::RequestResponse] Calls back with the new collection
-    def create_collection(name)
+    def create_collection(name, opts = {})
       response = RequestResponse.new
       names_resp = collection_names
       names_resp.callback do |names|
@@ -125,7 +125,7 @@ module EM::Mongo
         # Create a new collection.
         oh = BSON::OrderedHash.new
         oh[:create] = name
-        cmd_resp = command(oh)
+        cmd_resp = command(oh.merge(opts || {}))
         cmd_resp.callback do |doc|
           if EM::Mongo::Support.ok?(doc)
             response.succeed EM::Mongo::Collection.new(@db_name, name, @em_connection)
