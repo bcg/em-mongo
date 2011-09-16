@@ -37,8 +37,6 @@ describe EMMongo::Database do
   it "should create a collection with options" do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
-    # collection a from the previous test is still available so we need to
-    # create a new collection
     @db.create_collection('capped', {:capped => true, :max => 10}).callback do |col|
       @db.command({:collstats => 'capped'}).callback do |doc|
         doc['capped'].should == 1
