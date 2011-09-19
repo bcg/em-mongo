@@ -85,7 +85,7 @@ em-mongo will present errors in two different ways. First, em-mongo will raise e
 
 Errors returned by the database, or errors communicating with the database, will be delivered via standard EM::Deferrable errbacks. While it is tempting to subscribe just to a callback
 
-  my_colletion.find.defer_as_a.callback {|docs| ... }
+  my_collection.find.defer_as_a.callback {|docs| ... }
 
 in the case of an error you will never receive a response. If you are waiting for a response before your program continues, you will be waiting a very long time. A better approach would be to store the deferrable into a variable and subscribe to its callback and errback
 
