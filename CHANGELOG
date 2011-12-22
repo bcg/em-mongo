@@ -1,3 +1,9 @@
+- 0.4.2
+
+ * defer_as_a instead to to_a
+ * bugger optimizations
+ * Jruby fixes
+
 - 0.4.1
 
  * fix collection response value on success (pawelpacana)
