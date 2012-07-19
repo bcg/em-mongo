@@ -164,9 +164,11 @@ module EM::Mongo
       end
 
       if @buffer.more?
-        remaining_bytes= @buffer.size-@buffer.position
-        @buffer = BSON::ByteBuffer.new(@buffer.to_s[@buffer.position,remaining_bytes])
-        @buffer.rewind
+        if @buffer.position > 0
+          remaining_bytes= @buffer.size-@buffer.position
+          @buffer = BSON::ByteBuffer.new(@buffer.to_s[@buffer.position,remaining_bytes])
+          @buffer.rewind
+        end
       else
         @buffer.clear
       end
