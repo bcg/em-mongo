@@ -401,6 +401,59 @@ module EM::Mongo
       response
     end
 
+    # Perform an aggregation using the aggregation framework on the current collection.
+    # @note Aggregate requires server version >= 2.1.1
+    # @note Field References: Within an expression, field names must be quoted and prefixed by a dollar sign ($).
+    #
+    # @example Define the pipeline as an array of operator hashes:
+    #   coll.aggregate([ {"$project" => {"last_name" => 1, "first_name" => 1 }}, {"$match" => {"last_name" => "Jones"}} ])
+    #
+    # @param [Array] pipeline Should be a single array of pipeline operator hashes.
+    #
+    #   '$project' Reshapes a document stream by including fields, excluding fields, inserting computed fields,
+    #   renaming fields,or creating/populating fields that hold sub-documents.
+    #
+    #   '$match' Query-like interface for filtering documents out of the aggregation pipeline.
+    #
+    #   '$limit' Restricts the number of documents that pass through the pipeline.
+    #
+    #   '$skip' Skips over the specified number of documents and passes the rest along the pipeline.
+    #
+    #   '$unwind' Peels off elements of an array individually, returning one document for each member.
+    #
+    #   '$group' Groups documents for calculating aggregate values.
+    #
+    #   '$sort' Sorts all input documents and returns them to the pipeline in sorted order.
+    #
+    # @option opts [:primary, :secondary] :read Read preference indicating which server to perform this query
+    #  on. See Collection#find for more details.
+    # @option opts [String]  :comment (nil) a comment to include in profiling logs
+    #
+    # @return [Array] An Array with the aggregate command's results.
+    #
+    # @raise MongoArgumentError if operators either aren't supplied or aren't in the correct format.
+    # @raise MongoOperationFailure if the aggregate command fails.
+    #
+    def aggregate(pipeline=nil, opts={})
+      response = RequestResponse.new
+      raise MongoArgumentError, "pipeline must be an array of operators" unless pipeline.class == Array
+      raise MongoArgumentError, "pipeline operators must be hashes" unless pipeline.all? { |op| op.class == Hash }
+
+      hash = BSON::OrderedHash.new
+      hash['aggregate'] = self.name
+      hash['pipeline'] = pipeline
+
+      cmd_resp = db.command(hash)
+      cmd_resp.callback do |resp|
+        response.succeed resp["result"]
+      end
+      cmd_resp.errback do |err|
+        response.fail err
+      end
+
+      response
+    end
+
     # Perform a map-reduce operation on the current collection.
     #
     # @param [String, BSON::Code] map a map function, written in JavaScript.
@@ -804,3 +857,4 @@ module EM::Mongo
 
   end
 end
+
