@@ -108,8 +108,8 @@ This is one place where em-mongo diverges substantially from the mongo-ruby-driv
 
   #a safe write using em-mongo
   insert_resp = my_collection.safe_insert( {:a => "b" } )
-  insert_resp.callback do { #all ok }
-  insert_resp.errback do { |err| puts '<sigh>' }
+  insert_resp.callback { #all ok }
+  insert_resp.errback { |err| puts '<sigh>' }
 
 em-mongo has the following safe methods:
   safe_insert, safe_update, safe_save
