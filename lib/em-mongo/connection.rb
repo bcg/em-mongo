@@ -23,6 +23,8 @@ module EM::Mongo
 
   ASCENDING  =  1
   DESCENDING = -1
+  FLAT2D     = '2d'
+  SPHERE2D   = '2dsphere'
   GEO2D      = '2d'
 
   DEFAULT_MAX_BSON_SIZE = 4 * 1024 * 1024
