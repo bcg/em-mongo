@@ -1,3 +1,7 @@
+
+    Em-mongo is no longer being maintained (hasn't been for some time). If you are interested in the commit bit
+    or want to take over the full project, please let me know!
+
 = EM-Mongo
 
 An EventMachine client for MongoDB. Originally based on RMongo, this client aims to be as api compatible
