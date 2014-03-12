@@ -9,12 +9,14 @@ Gem::Specification.new do |s|
   s.date    = "2010-12-01"
 
   s.description = 'EventMachine driver for MongoDB.'
-  s.homepage = 'http://github.com/bcg/em-mongo'
+  s.homepage = 'https://github.com/bcg/em-mongo'
   s.rubyforge_project = 'em-mongo'
 
-  s.files      = Dir['VERSION', 'lib/**/*']
-  s.test_files = Dir['spec/integration/**/*']
+  s.files = `git ls-files`.split("\n")
 
+  s.test_files = `git ls-files -- {test,spec,features}/*`.split("\n")
+
+  s.extra_rdoc_files = ["README.rdoc"]
   s.rdoc_options  = ["--charset=UTF-8"]
   s.require_paths = ["lib"]
 
@@ -22,7 +24,7 @@ Gem::Specification.new do |s|
 
   s.summary = 'An EventMachine driver for MongoDB.'
 
-  s.add_dependency 'eventmachine', ['>= 0.12.10'] 
-  s.add_dependency 'bson', ['>= 1.1.3'] 
+  s.add_dependency 'eventmachine', ['>= 0.12.10']
+  s.add_dependency 'bson', ['>= 1.1.3']
 
 end
