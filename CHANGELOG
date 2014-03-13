@@ -1,3 +1,10 @@
+- 0.5.0
+
+ * debian packaging changes
+    (https://github.com/bcg/em-mongo/pull/53)
+ * added new 2d indexes EM::Mongo::FLAT2D, EM::Mongo::SPHERE2D
+    (https://github.com/bcg/em-mongo/pull/49)
+
 - 0.4.3
 
  * ensure new buffers aren't created when not needed (FlockOfBirds) #40
