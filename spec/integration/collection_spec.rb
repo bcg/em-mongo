@@ -642,12 +642,22 @@ describe EMMongo::Collection do
       end
     end
 
-    it "should create a geospatial index" do
-      @conn, @geo = connection_and_collection('geo')
+    it "should create a flat 2d index" do
+      @conn, @geo = connection_and_collection('2d')
       @geo.save({'loc' => [-100, 100]})
-      @geo.create_index([['loc', EM::Mongo::GEO2D]])
+      @geo.create_index([['loc', EM::Mongo::FLAT2D]])
       @geo.index_information.callback do |info|
         info['loc_2d'].should_not be_nil
+        done
+      end
+    end
+
+    it "should create a sphere 2d index" do
+      @conn, @geo = connection_and_collection('2dsphere')
+      @geo.save({'loc' => [-100, 100]})
+      @geo.create_index([['loc', EM::Mongo::SPHERE2D]])
+      @geo.index_information.callback do |info|
+        info['loc_2dsphere'].should_not be_nil
         done
       end
     end

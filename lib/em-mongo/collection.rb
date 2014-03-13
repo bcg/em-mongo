@@ -597,7 +597,10 @@ module EM::Mongo
     # @param [String, Array] spec
     #   should be either a single field name or an array of
     #   [field name, direction] pairs. Directions should be specified
-    #   as Mongo::ASCENDING, Mongo::DESCENDING, or Mongo::GEO2D.
+    #   as EM::Mongo::ASCENDING, EM::Mongo::DESCENDING, EM::Mongo::FLAT2D, EM::Mongo::SPHERE2D
+    #
+    #   Note that MongoDB 2.2 used 2d flat indexes and called them geo, MongoDB 2.4 has 2d and 2dsphere indexes
+    #   EM::Mongo::GEO2D is kept for backward compatiblity and is creating a flat 2d index
     #
     #   Note that geospatial indexing only works with versions of MongoDB >= 1.3.3+. Keep in mind, too,
     #   that in order to geo-index a given field, that field must reference either an array or a sub-object
@@ -618,10 +621,10 @@ module EM::Mongo
     # @option opts [Integer] :max (nil) specify the maximum longitude and latitude for a geo index.
     #
     # @example Creating a compound index:
-    #   @posts.create_index([['subject', Mongo::ASCENDING], ['created_at', Mongo::DESCENDING]])
+    #   @posts.create_index([['subject', EM::Mongo::ASCENDING], ['created_at', EM::Mongo::DESCENDING]])
     #
     # @example Creating a geospatial index:
-    #   @restaurants.create_index([['location', Mongo::GEO2D]])
+    #   @restaurants.create_index([['location', EM::Mongo::SPHERE2D]])
     #
     #   # Note that this will work only if 'location' represents x,y coordinates:
     #   {'location': [0, 50]}
@@ -629,7 +632,7 @@ module EM::Mongo
     #   {'location': {'latitude' => 0, 'longitude' => 50}}
     #
     # @example A geospatial index with alternate longitude and latitude:
-    #   @restaurants.create_index([['location', Mongo::GEO2D]], :min => 500, :max => 500)
+    #   @restaurants.create_index([['location', EM::Mongo::SPHERE2D]], :min => 500, :max => 500)
     #
     # @return [String] the name of the index created.
     #
@@ -770,11 +773,13 @@ module EM::Mongo
         field_spec[spec.to_s] = 1
       elsif spec.is_a?(Array) && spec.all? {|field| field.is_a?(Array) }
         spec.each do |f|
-          if [EM::Mongo::ASCENDING, EM::Mongo::DESCENDING, EM::Mongo::GEO2D].include?(f[1])
+          if [EM::Mongo::ASCENDING, EM::Mongo::DESCENDING,
+              EM::Mongo::SPHERE2D, EM::Mongo::FLAT2D, EM::Mongo::GEO2D].include?(f[1])
             field_spec[f[0].to_s] = f[1]
           else
             raise MongoArgumentError, "Invalid index field #{f[1].inspect}; " +
-              "should be one of Mongo::ASCENDING (1), Mongo::DESCENDING (-1) or Mongo::GEO2D ('2d')."
+              "should be one of EM::Mongo::ASCENDING (1), EM::Mongo::DESCENDING (-1), EM::Mongo::SPHERE2D ('2dsphere')" +
+              " or EM::Mongo::FLAT2D ('2d') (GEO2D is deprecated)"
           end
         end
       else
