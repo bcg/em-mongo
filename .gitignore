@@ -2,3 +2,5 @@ Gemfile.lock
 .bundle
 *.gem
 vendor
+.rvmrc
+.ruby-version

@@ -101,23 +101,27 @@ namespace :spec do
     desc "default tests"
     task :default => ['bundle:install'] do
       MongoRunner.run do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        files = spec.test_files.select{|x| x =~ /integration/}.join(' ')
+        system "bundle exec spec #{files} -t -b -fs -color"
       end
     end
 
     desc "exhaustive tests"
     task :exhaustive => ['bundle:install'] do
       MongoRunner.run({:noclean => true}) do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        files = spec.test_files.select{|x| x =~ /integration/}.join(' ')
+        system "bundle exec spec #{files} -t -b -fs -color"
       end
       MongoRunner.run({:auth => true}) do
-        system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+        files = spec.test_files.select{|x| x =~ /integration/}.join(' ')
+        system "bundle exec spec #{files} -t -b -fs -color"
       end
     end
 
     desc "default tests, but don't start mongodb for me"
     task :no_mongo => ['bundle:install'] do
-      system "bundle exec spec #{spec.test_files.join(' ')} -t -b -fs -color"
+      files = spec.test_files.select{|x| x =~ /integration/}.join(' ')
+      system "bundle exec spec #{files} -t -b -fs -color"
     end
 
   end
