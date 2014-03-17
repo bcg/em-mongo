@@ -1,3 +1,9 @@
+- 0.5.1
+
+  * fixed bson dependency (do not use 2.x)
+  * fixed test running
+  * removed bash only expression from gemspec
+
 - 0.5.0
 
  * debian packaging changes
