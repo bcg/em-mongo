@@ -5,9 +5,16 @@ require 'em-mongo/prev.rb'
 require 'eventmachine'
 
 EM.run do
-  conn = EM::Mongo::Connection.new('localhost')
+  conn = EM::Mongo::Connection.new('localhost',27017)
   db = conn.db('my_database')
   collection = db.collection('my_collection')
+
+  resp = conn.db('admin').authenticate('test','test')
+
+  resp.callback{|response| puts "successfully authenticated #{response}"}
+  resp.errback {|response| puts "error on authentication #{response}"; return}
+
+
   EM.next_tick do
 
     (1..10).each do |i|

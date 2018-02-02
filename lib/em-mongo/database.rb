@@ -309,8 +309,8 @@ module EM::Mongo
       response = RequestResponse.new
       cmd_resp = Cursor.new(self.collection(SYSTEM_COMMAND_COLLECTION), :limit => -1, :selector => selector).next_document
 
-      cmd_resp.callback do |doc|
-        if doc.nil?
+          cmd_resp.callback do |doc|
+            if doc.nil?
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: returned null."])
         elsif (check_response && !EM::Mongo::Support.ok?(doc))
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: #{doc.inspect}"])
@@ -339,19 +339,60 @@ module EM::Mongo
     # @core authenticate authenticate-instance_method
     def authenticate(username, password)
       response = RequestResponse.new
-      auth_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
-      auth_resp.callback do |res|
-        if not res or not res['nonce']
+      client_nonce = SecureRandom.base64
+
+      VERIFIER = /v=([^,]*)/.freeze
+      SERVER_KEY = 'Server Key'.freeze
+      SALT = /s=([^,]*)/.freeze
+      RNONCE = /r=([^,]*)/.freeze
+      PAYLOAD = 'payload'.freeze
+      ITERATIONS = /i=(\d+)/.freeze
+      DIGEST = OpenSSL::Digest::SHA1.new.freeze
+      CLIENT_KEY = 'Client Key'.freeze
+
+      gs2_header = 'n,,'
+      client_first_bare = "n=#{username},r=#{client_nonce}"
+      first = BSON::Binary.new(gs2_header+client_first_bare) # client_first msg
+
+      client_first_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(first)
+      client_first_resp.callback do |res|
+        if not res or not res['r'] ## TODO NEED TO FIND OUT WHAT TYPE THIS RES IS and how to get the payload out of it
           response.succeed false
         else
-          auth                 = BSON::OrderedHash.new
-          auth['authenticate'] = 1
-          auth['user']         = username
-          auth['nonce']        = res['nonce']
-          auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
+          # if nonce is not in result fail
+          #
+          # else take the salt & iterations and do the pw-derivation
+          server_first   = #TODO server first msg
 
-          auth_resp2 = self.collection(SYSTEM_COMMAND_COLLECTION).first(auth)
-          auth_resp2.callback do |res|
+          combined_nonce = server_first.match(RNONCE) #r= ...
+          salt       =     server_first.match( SALT ) #s=... (from server_first)
+          iterations = server_first.match(ITERATIONS) #i=...  ..
+
+          if(!combined_nonce.starts_with(client_nonce)) then response.fail res end # TODO  probably give something other back then res (no idea what type this should be)
+
+          client_final_wo_proof= BSON::Binary.new("c=#{Base64.strict_encode64(gs2_header)},r=#{combined_nonce}") #c='biws'
+          auth_message = client_first_bare + ',' + server_first + ',' + client_final_wo_proof
+
+
+          # proof = clientKey XOR clientSig  ## needs to be sent back
+          #
+          # ClientSign  = HMAC(StoredKey, AuthMessage)
+          # StoredKey = H(ClientKey) ## lt. RFC5802 (needs to be verified against ruby-mongo driver impl)
+          # AuthMessage = client_first_bare + ','+server_first+','+client_final_wo_proof
+
+          cilent_key = EM::Mongo::Support.clientKey(username, password, salt, iterations)
+          client_signature = EM::Mongo::Support.hmac(h(client_key),auth_message)
+          proof = Base64.strict_encode64(clientKey, clientSig) # a lot of work to get this proof BUT HERE IT IS
+
+          client_final= BSON::Binary.new(client_final_wo_proof+",p=#{proof}")
+
+          server_final_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(client_final)
+          server_final_resp.callback do |res|
+            ## TODO verify the verifier (v=...)
+            #  verifier == server_signature
+            # server_signature = B64(hmac(server_key, auth_message))
+            # server_key = hmac(salted_password,"Server Key")
+            # salted_password = hi(hashed_password)  --> see clientKey impl in support.rb
             if EM::Mongo::Support.ok?(res)
               response.succeed true
             else
@@ -362,7 +403,7 @@ module EM::Mongo
         end
       end
       auth_resp.errback { |err| response.fail err }
-      response
+      return response
     end
 
     # Adds a user to this database for use with authentication. If the user already
@@ -381,7 +422,7 @@ module EM::Mongo
         response.succeed self.collection(SYSTEM_USER_COLLECTION).save(user)
       end
       user_resp.errback { |err| response.fail err }
-      response
+      return response
     end
 
   end

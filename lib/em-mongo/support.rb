@@ -34,6 +34,45 @@ module EM::Mongo
       Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
     end
 
+    # HI algorithm implementation.
+    #
+    # @api private
+    #
+    # @see http://tools.ietf.org/html/rfc5802#section-2.2
+    #
+    # @since 2.0.0
+    def hi(password,salt,iterations)
+      Krypt::PBKDF2.new(DIGEST).generate(
+          password,
+          Base64.strict_decode64(salt),
+          iterations,
+          DIGEST.digest_length
+      )
+    end
+
+    # Client key algorithm implementation.
+    #
+    # @api private
+    #
+    # @see http://tools.ietf.org/html/rfc5802#section-3
+    #
+    # @since 2.0.0
+    def client_key(username, plain_password, salt, iterations)
+      hashed_password = Digest::MD5.hexdigest("#{username}:mongo:#{plain_password}").encode(BSON::UTF8)
+      salted_password = hi(hashed_password, salt iterations)
+      hmac(salted_password, "Client Key")
+    end
+
+
+    # XOR operation for two strings.
+    #
+    # @api private
+    #
+    # @since 2.0.0
+    def xor(first, second)
+      first.bytes.zip(second.bytes).map{ |(a,b)| (a ^ b).chr }.join('')
+    end
+
     # Return a hashed password for auth.
     #
     # @param [String] username
@@ -61,11 +100,13 @@ module EM::Mongo
 
     def format_order_clause(order)
       case order
-        when String, Symbol then string_as_sort_parameters(order)
-        when Array then array_as_sort_parameters(order)
+        when String, Symbol then
+          string_as_sort_parameters(order)
+        when Array then
+          array_as_sort_parameters(order)
         else
           raise InvalidSortValueError, "Illegal sort clause, '#{order.class.name}'; must be of the form " +
-            "[['field1', '(ascending|descending)'], ['field2', '(ascending|descending)']]"
+              "[['field1', '(ascending|descending)'], ['field2', '(ascending|descending)']]"
       end
     end
 
