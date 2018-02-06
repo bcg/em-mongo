@@ -16,12 +16,14 @@
 # limitations under the License.
 # ++
 
-require 'digest/md5'
+require 'openssl'
 
 module EM::Mongo
   module Support
     include EM::Mongo::Conversions
     extend self
+
+    CLIENT_KEY = 'Client Key'.freeze
 
     # Generate an MD5 for authentication.
     #
@@ -31,7 +33,7 @@ module EM::Mongo
     #
     # @return [String] a key for db authentication.
     def auth_key(username, password, nonce)
-      Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
+      OpenSSL::Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
     end
 
     # HI algorithm implementation.
@@ -42,12 +44,12 @@ module EM::Mongo
     #
     # @since 2.0.0
     def hi(password,salt,iterations)
-      Krypt::PBKDF2.new(DIGEST).generate(
-          password,
-          Base64.strict_decode64(salt),
-          iterations,
-          DIGEST.digest_length
-      )
+      OpenSSL::PKCS5.pbkdf2_hmac_sha1(
+        password,
+        Base64.strict_decode64(salt),
+        iterations,
+        digest.size
+       )
     end
 
     # Client key algorithm implementation.
@@ -58,9 +60,17 @@ module EM::Mongo
     #
     # @since 2.0.0
     def client_key(username, plain_password, salt, iterations)
-      hashed_password = Digest::MD5.hexdigest("#{username}:mongo:#{plain_password}").encode(BSON::UTF8)
-      salted_password = hi(hashed_password, salt iterations)
-      hmac(salted_password, "Client Key")
+      hashed_password = OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plain_password}").encode("UTF-8")
+      salted_password = hi(hashed_password, salt, iterations)
+      return hmac(salted_password,CLIENT_KEY)
+    end
+
+    def hmac(data,key)
+      OpenSSL::HMAC.digest(digest, data, key)
+    end
+
+    def digest
+      @digest ||= OpenSSL::Digest::SHA1.new.freeze
     end
 
 
@@ -80,7 +90,7 @@ module EM::Mongo
     #
     # @return [String]
     def hash_password(username, plaintext)
-      Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
+      OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
     end
 
 

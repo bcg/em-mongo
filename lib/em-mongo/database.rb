@@ -326,6 +326,17 @@ module EM::Mongo
       response
     end
 
+    CLIENT_FIRST_MESSAGE = { saslStart: 1, autoAuthorize: 1 }.freeze
+    CLIENT_FINAL_MESSAGE = CLIENT_CONTINUE_MESSAGE = { saslContinue: 1 }.freeze
+
+    SERVER_KEY = 'Server Key'.freeze
+    RNONCE = /r=([^,]*)/.freeze
+    SALT = /s=([^,]*)/.freeze
+    ITERATIONS = /i=(\d+)/.freeze
+    VERIFIER = /v=([^,]*)/.freeze
+    PAYLOAD = 'payload'.freeze
+    DIGEST = OpenSSL::Digest::SHA1.new.freeze
+
     # Authenticate with the given username and password. Note that mongod
     # must be started with the --auth option for authentication to be enabled.
     #
@@ -341,68 +352,80 @@ module EM::Mongo
       response = RequestResponse.new
       client_nonce = SecureRandom.base64
 
-      VERIFIER = /v=([^,]*)/.freeze
-      SERVER_KEY = 'Server Key'.freeze
-      SALT = /s=([^,]*)/.freeze
-      RNONCE = /r=([^,]*)/.freeze
-      PAYLOAD = 'payload'.freeze
-      ITERATIONS = /i=(\d+)/.freeze
-      DIGEST = OpenSSL::Digest::SHA1.new.freeze
-      CLIENT_KEY = 'Client Key'.freeze
-
       gs2_header = 'n,,'
       client_first_bare = "n=#{username},r=#{client_nonce}"
-      first = BSON::Binary.new(gs2_header+client_first_bare) # client_first msg
 
-      client_first_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(first)
+      first = BSON::Binary.new(gs2_header+client_first_bare) # client_first msg
+      first_msg = CLIENT_FIRST_MESSAGE.merge({payload:first, mechanism:'SCRAM-SHA-1'})
+      client_first_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(first_msg)
       client_first_resp.callback do |res|
-        if not res or not res['r'] ## TODO NEED TO FIND OUT WHAT TYPE THIS RES IS and how to get the payload out of it
+        if not res or not res['payload']
+          response.fail res if res
           response.succeed false
         else
-          # if nonce is not in result fail
+          # if payload is not in result fail
           #
           # else take the salt & iterations and do the pw-derivation
-          server_first   = #TODO server first msg
+          server_first   = res['payload'].to_s
 
-          combined_nonce = server_first.match(RNONCE) #r= ...
-          salt       =     server_first.match( SALT ) #s=... (from server_first)
-          iterations = server_first.match(ITERATIONS) #i=...  ..
+          convId = res['conversationId']
 
-          if(!combined_nonce.starts_with(client_nonce)) then response.fail res end # TODO  probably give something other back then res (no idea what type this should be)
+          combined_nonce = server_first.match(RNONCE)[1] #r= ...
+          salt       =     server_first.match( SALT )[1] #s=... (from server_first)
+          iterations = server_first.match(ITERATIONS)[1].to_i #i=...  ..
 
-          client_final_wo_proof= BSON::Binary.new("c=#{Base64.strict_encode64(gs2_header)},r=#{combined_nonce}") #c='biws'
-          auth_message = client_first_bare + ',' + server_first + ',' + client_final_wo_proof
+          if(!combined_nonce.start_with?(client_nonce)) # combined_nonce should be client_nonce+server_nonce
+            response.fail res
+          else
+            client_final_wo_proof= "c=#{Base64.strict_encode64(gs2_header)},r=#{combined_nonce}" #c='biws'
+            auth_message = client_first_bare + ',' + server_first + ',' + client_final_wo_proof
 
 
-          # proof = clientKey XOR clientSig  ## needs to be sent back
-          #
-          # ClientSign  = HMAC(StoredKey, AuthMessage)
-          # StoredKey = H(ClientKey) ## lt. RFC5802 (needs to be verified against ruby-mongo driver impl)
-          # AuthMessage = client_first_bare + ','+server_first+','+client_final_wo_proof
+            # proof = clientKey XOR clientSig  ## needs to be sent back
+            #
+            # ClientSign  = HMAC(StoredKey, AuthMessage)
+            # StoredKey = H(ClientKey) ## lt. RFC5802 (needs to be verified against ruby-mongo driver impl)
+            # AuthMessage = client_first_bare + ','+server_first+','+client_final_wo_proof
 
-          cilent_key = EM::Mongo::Support.clientKey(username, password, salt, iterations)
-          client_signature = EM::Mongo::Support.hmac(h(client_key),auth_message)
-          proof = Base64.strict_encode64(clientKey, clientSig) # a lot of work to get this proof BUT HERE IT IS
+            #todo abstract this stuff here a bit
+            client_key = EM::Mongo::Support.client_key(username, password, salt, iterations)
 
-          client_final= BSON::Binary.new(client_final_wo_proof+",p=#{proof}")
+            client_signature = EM::Mongo::Support.hmac(EM::Mongo::Support::digest.digest(client_key),auth_message)
 
-          server_final_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(client_final)
-          server_final_resp.callback do |res|
-            ## TODO verify the verifier (v=...)
-            #  verifier == server_signature
-            # server_signature = B64(hmac(server_key, auth_message))
-            # server_key = hmac(salted_password,"Server Key")
-            # salted_password = hi(hashed_password)  --> see clientKey impl in support.rb
-            if EM::Mongo::Support.ok?(res)
-              response.succeed true
-            else
-              response.fail res
+            proof = Base64.strict_encode64(EM::Mongo::Support::xor(client_key, client_signature)) # a lot of work to get this proof BUT HERE IT IS
+
+            client_final = BSON::Binary.new ( client_final_wo_proof + ",p=#{proof}")
+
+            client_final_msg = CLIENT_CONTINUE_MESSAGE.merge({payload: client_final, conversationId: convId})
+
+            server_final_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(client_final_msg)
+            server_final_resp.callback do |res|
+              ## TODO verify the verifier (v=...)
+              #  verifier == server_signature
+              # server_signature = B64(hmac(server_key, auth_message))
+              # server_key = hmac(salted_password,"Server Key")
+              # salted_password = hi(hashed_password)  --> see clientKey impl in support.rb
+              if not res or not res['payload']
+                response.fail res # TODO  put a more meaningful output than res here (and probably above too)
+              else
+                verifier = res['payload'].match(VERIFIER)[1] #r= ...
+                if verifier
+                  #do some veriification HERE
+
+                  #WHILE res['done'] != 1
+                  # client_final_msg = CLIENT_FINAL_MESSAGE.merge({payload: BSON::Binary.new(''), conversationId: convId})
+                  # server_resp = self.collection(System_command_Collection).first(client_final_mesg)
+                  #  \-> repeat here until sucess
+                end
+                response.succeed true
+              end
             end
           end
-          auth_resp2.errback { |err| response.fail err }
+          client_final_resp.errback { |err| response.fail err }
         end
       end
-      auth_resp.errback { |err| response.fail err }
+      client_first_resp.errback {
+          |err| response.fail err }
       return response
     end
 
