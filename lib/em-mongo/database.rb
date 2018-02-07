@@ -1,3 +1,5 @@
+require_relative 'auth/Authentication.rb'
+
 module EM::Mongo
   class Database
 
@@ -326,107 +328,25 @@ module EM::Mongo
       response
     end
 
-    CLIENT_FIRST_MESSAGE = { saslStart: 1, autoAuthorize: 1 }.freeze
-    CLIENT_FINAL_MESSAGE = CLIENT_CONTINUE_MESSAGE = { saslContinue: 1 }.freeze
-
-    SERVER_KEY = 'Server Key'.freeze
-    RNONCE = /r=([^,]*)/.freeze
-    SALT = /s=([^,]*)/.freeze
-    ITERATIONS = /i=(\d+)/.freeze
-    VERIFIER = /v=([^,]*)/.freeze
-    PAYLOAD = 'payload'.freeze
-    DIGEST = OpenSSL::Digest::SHA1.new.freeze
 
     # Authenticate with the given username and password. Note that mongod
     # must be started with the --auth option for authentication to be enabled.
     #
     # @param [String] username
     # @param [String] password
+    # @param [Authentication::AuthMethod] AuthenticationMethod, defaults to MONGODB_CR for downward compatibility
     #
     # @return [EM::Mongo::RequestResponse] Calls back with +true+ or +false+, indicating success or failure
     #
     # @raise [AuthenticationError]
     #
     # @core authenticate authenticate-instance_method
-    def authenticate(username, password)
-      response = RequestResponse.new
-      client_nonce = SecureRandom.base64
-
-      gs2_header = 'n,,'
-      client_first_bare = "n=#{username},r=#{client_nonce}"
-
-      first = BSON::Binary.new(gs2_header+client_first_bare) # client_first msg
-      first_msg = CLIENT_FIRST_MESSAGE.merge({payload:first, mechanism:'SCRAM-SHA-1'})
-      client_first_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(first_msg)
-      client_first_resp.callback do |res|
-        if not res or not res['payload']
-          response.fail res if res
-          response.succeed false
-        else
-          # if payload is not in result fail
-          #
-          # else take the salt & iterations and do the pw-derivation
-          server_first   = res['payload'].to_s
-
-          convId = res['conversationId']
-
-          combined_nonce = server_first.match(RNONCE)[1] #r= ...
-          salt       =     server_first.match( SALT )[1] #s=... (from server_first)
-          iterations = server_first.match(ITERATIONS)[1].to_i #i=...  ..
-
-          if(!combined_nonce.start_with?(client_nonce)) # combined_nonce should be client_nonce+server_nonce
-            response.fail res
-          else
-            client_final_wo_proof= "c=#{Base64.strict_encode64(gs2_header)},r=#{combined_nonce}" #c='biws'
-            auth_message = client_first_bare + ',' + server_first + ',' + client_final_wo_proof
-
-
-            # proof = clientKey XOR clientSig  ## needs to be sent back
-            #
-            # ClientSign  = HMAC(StoredKey, AuthMessage)
-            # StoredKey = H(ClientKey) ## lt. RFC5802 (needs to be verified against ruby-mongo driver impl)
-            # AuthMessage = client_first_bare + ','+server_first+','+client_final_wo_proof
-
-            #todo abstract this stuff here a bit
-            client_key = EM::Mongo::Support.client_key(username, password, salt, iterations)
-
-            client_signature = EM::Mongo::Support.hmac(EM::Mongo::Support::digest.digest(client_key),auth_message)
-
-            proof = Base64.strict_encode64(EM::Mongo::Support::xor(client_key, client_signature)) # a lot of work to get this proof BUT HERE IT IS
-
-            client_final = BSON::Binary.new ( client_final_wo_proof + ",p=#{proof}")
-
-            client_final_msg = CLIENT_CONTINUE_MESSAGE.merge({payload: client_final, conversationId: convId})
-
-            server_final_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first(client_final_msg)
-            server_final_resp.callback do |res|
-              ## TODO verify the verifier (v=...)
-              #  verifier == server_signature
-              # server_signature = B64(hmac(server_key, auth_message))
-              # server_key = hmac(salted_password,"Server Key")
-              # salted_password = hi(hashed_password)  --> see clientKey impl in support.rb
-              if not res or not res['payload']
-                response.fail res # TODO  put a more meaningful output than res here (and probably above too)
-              else
-                verifier = res['payload'].match(VERIFIER)[1] #r= ...
-                if verifier
-                  #do some veriification HERE
-
-                  #WHILE res['done'] != 1
-                  # client_final_msg = CLIENT_FINAL_MESSAGE.merge({payload: BSON::Binary.new(''), conversationId: convId})
-                  # server_resp = self.collection(System_command_Collection).first(client_final_mesg)
-                  #  \-> repeat here until sucess
-                end
-                response.succeed true
-              end
-            end
-          end
-          client_final_resp.errback { |err| response.fail err }
-        end
-      end
-      client_first_resp.errback {
-          |err| response.fail err }
-      return response
+    def authenticate(username, password, authMethod=Authentication::AuthMethod::MONGODB_CR)
+      auth = case authMethod 
+             when Authentication::AuthMethod::SCRAM_SHA1 then SCRAM.new
+             else MONGOCR.new
+             end
+       return auth.authenticate(username, password)
     end
 
     # Adds a user to this database for use with authentication. If the user already
@@ -436,6 +356,7 @@ module EM::Mongo
     # @param [String] password
     #
     # @return [EM::Mongo::RequestResponse] Calls back with an object representing the user.
+    # #TODO check if that works as it should with SCRAM-SHA1
     def add_user(username, password)
       response = RequestResponse.new
       user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})

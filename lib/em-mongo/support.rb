@@ -23,8 +23,6 @@ module EM::Mongo
     include EM::Mongo::Conversions
     extend self
 
-    CLIENT_KEY = 'Client Key'.freeze
-
     # Generate an MD5 for authentication.
     #
     # @param [String] username
@@ -36,53 +34,6 @@ module EM::Mongo
       OpenSSL::Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
     end
 
-    # HI algorithm implementation.
-    #
-    # @api private
-    #
-    # @see http://tools.ietf.org/html/rfc5802#section-2.2
-    #
-    # @since 2.0.0
-    def hi(password,salt,iterations)
-      OpenSSL::PKCS5.pbkdf2_hmac_sha1(
-        password,
-        Base64.strict_decode64(salt),
-        iterations,
-        digest.size
-       )
-    end
-
-    # Client key algorithm implementation.
-    #
-    # @api private
-    #
-    # @see http://tools.ietf.org/html/rfc5802#section-3
-    #
-    # @since 2.0.0
-    def client_key(username, plain_password, salt, iterations)
-      hashed_password = OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plain_password}").encode("UTF-8")
-      salted_password = hi(hashed_password, salt, iterations)
-      return hmac(salted_password,CLIENT_KEY)
-    end
-
-    def hmac(data,key)
-      OpenSSL::HMAC.digest(digest, data, key)
-    end
-
-    def digest
-      @digest ||= OpenSSL::Digest::SHA1.new.freeze
-    end
-
-
-    # XOR operation for two strings.
-    #
-    # @api private
-    #
-    # @since 2.0.0
-    def xor(first, second)
-      first.bytes.zip(second.bytes).map{ |(a,b)| (a ^ b).chr }.join('')
-    end
-
     # Return a hashed password for auth.
     #
     # @param [String] username
@@ -92,7 +43,6 @@ module EM::Mongo
     def hash_password(username, plaintext)
       OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
     end
-
 
     def validate_db_name(db_name)
       unless [String, Symbol].include?(db_name.class)
