@@ -66,7 +66,7 @@ module EM::Mongo
           array_as_sort_parameters(order)
         else
           raise InvalidSortValueError, "Illegal sort clause, '#{order.class.name}'; must be of the form " +
-              "[['field1', '(ascending|descending)'], ['field2', '(ascending|descending)']]"
+            "[['field1', '(ascending|descending)'], ['field2', '(ascending|descending)']]"
       end
     end
 

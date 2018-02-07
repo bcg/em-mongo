@@ -313,8 +313,8 @@ module EM::Mongo
       response = RequestResponse.new
       cmd_resp = Cursor.new(self.collection(SYSTEM_COMMAND_COLLECTION), :limit => -1, :selector => selector).next_document
 
-          cmd_resp.callback do |doc|
-            if doc.nil?
+      cmd_resp.callback do |doc|
+        if doc.nil?
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: returned null."])
         elsif (check_response && !EM::Mongo::Support.ok?(doc))
           response.fail([OperationFailure, "Database command '#{selector.keys.first}' failed: #{doc.inspect}"])
@@ -329,7 +329,6 @@ module EM::Mongo
 
       response
     end
-
 
     # Authenticate with the given username and password. Note that mongod
     # must be started with the --auth option for authentication to be enabled.
@@ -369,7 +368,7 @@ module EM::Mongo
         response.succeed self.collection(SYSTEM_USER_COLLECTION).save(user)
       end
       user_resp.errback { |err| response.fail err }
-      return response
+      response
     end
 
   end
