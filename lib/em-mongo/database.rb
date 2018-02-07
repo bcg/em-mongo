@@ -1,4 +1,6 @@
 require_relative 'auth/Authentication.rb'
+require_relative 'auth/scram.rb'
+require_relative 'auth/mongodb_cr.rb'
 
 module EM::Mongo
   class Database
@@ -85,7 +87,7 @@ module EM::Mongo
     # a cursor which can be iterated over. For each collection, a hash
     # will be yielded containing a 'name' string and, optionally, an 'options' hash.
     #
-    # @param [String] coll_name return info for the specifed collection only.
+    # @param [String] coll_name return info for the specified collection only.
     #
     # @return [EM::Mongo::Cursor]
     def collections_info(coll_name=nil)
@@ -334,17 +336,18 @@ module EM::Mongo
     #
     # @param [String] username
     # @param [String] password
-    # @param [Authentication::AuthMethod] AuthenticationMethod, defaults to MONGODB_CR for downward compatibility
+    # @param [Authentication::AuthMethod] auth_method, defaults to MONGODB_CR for downward compatibility
     #
     # @return [EM::Mongo::RequestResponse] Calls back with +true+ or +false+, indicating success or failure
     #
     # @raise [AuthenticationError]
     #
     # @core authenticate authenticate-instance_method
-    def authenticate(username, password, authMethod=Authentication::AuthMethod::MONGODB_CR)
-      auth = case authMethod 
-             when Authentication::AuthMethod::SCRAM_SHA1 then SCRAM.new
-             else MONGOCR.new
+    def authenticate(username, password, auth_method=Authentication::AuthMethod::MONGODB_CR)
+      auth = case auth_method
+             when Authentication::AuthMethod::SCRAM_SHA1 then SCRAM.new self
+             when Authentication::AuthMethod::MONGODB_CR then MONGODB_CR.new self
+             else raise AuthenticationError.new("Authentication method #{auth_method} not supported")
              end
        return auth.authenticate(username, password)
     end

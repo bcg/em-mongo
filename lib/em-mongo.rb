@@ -27,5 +27,7 @@ require File.join(EM::Mongo::LIBPATH, "em-mongo/cursor")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/request_response")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/server_response")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/core_ext")
+require File.join(EM::Mongo::LIBPATH, "em-mongo/auth/Authentication.rb")
+
 
 EMMongo = EM::Mongo
