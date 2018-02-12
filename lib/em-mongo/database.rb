@@ -1,3 +1,7 @@
+require_relative 'auth/Authentication.rb'
+require_relative 'auth/scram.rb'
+require_relative 'auth/mongodb_cr.rb'
+
 module EM::Mongo
   class Database
 
@@ -83,7 +87,7 @@ module EM::Mongo
     # a cursor which can be iterated over. For each collection, a hash
     # will be yielded containing a 'name' string and, optionally, an 'options' hash.
     #
-    # @param [String] coll_name return info for the specifed collection only.
+    # @param [String] coll_name return info for the specified collection only.
     #
     # @return [EM::Mongo::Cursor]
     def collections_info(coll_name=nil)
@@ -331,38 +335,20 @@ module EM::Mongo
     #
     # @param [String] username
     # @param [String] password
+    # @param [Authentication::AuthMethod] auth_method, defaults to MONGODB_CR for downward compatibility
     #
     # @return [EM::Mongo::RequestResponse] Calls back with +true+ or +false+, indicating success or failure
     #
     # @raise [AuthenticationError]
     #
     # @core authenticate authenticate-instance_method
-    def authenticate(username, password)
-      response = RequestResponse.new
-      auth_resp = self.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
-      auth_resp.callback do |res|
-        if not res or not res['nonce']
-          response.succeed false
-        else
-          auth                 = BSON::OrderedHash.new
-          auth['authenticate'] = 1
-          auth['user']         = username
-          auth['nonce']        = res['nonce']
-          auth['key']          = EM::Mongo::Support.auth_key(username, password, res['nonce'])
-
-          auth_resp2 = self.collection(SYSTEM_COMMAND_COLLECTION).first(auth)
-          auth_resp2.callback do |res|
-            if EM::Mongo::Support.ok?(res)
-              response.succeed true
-            else
-              response.fail res
-            end
-          end
-          auth_resp2.errback { |err| response.fail err }
-        end
-      end
-      auth_resp.errback { |err| response.fail err }
-      response
+    def authenticate(username, password, auth_method=Authentication::AuthMethod::MONGODB_CR)
+      auth = case auth_method
+             when Authentication::AuthMethod::SCRAM_SHA1 then SCRAM.new self
+             when Authentication::AuthMethod::MONGODB_CR then MONGODB_CR.new self
+             else raise AuthenticationError.new("Authentication method #{auth_method} not supported")
+             end
+       return auth.authenticate(username, password)
     end
 
     # Adds a user to this database for use with authentication. If the user already
@@ -372,6 +358,7 @@ module EM::Mongo
     # @param [String] password
     #
     # @return [EM::Mongo::RequestResponse] Calls back with an object representing the user.
+    # #TODO check if that works as it should with SCRAM-SHA1
     def add_user(username, password)
       response = RequestResponse.new
       user_resp = self.collection(SYSTEM_USER_COLLECTION).first({:user => username})

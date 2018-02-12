@@ -16,23 +16,13 @@
 # limitations under the License.
 # ++
 
-require 'digest/md5'
+require 'openssl'
 
 module EM::Mongo
   module Support
     include EM::Mongo::Conversions
     extend self
 
-    # Generate an MD5 for authentication.
-    #
-    # @param [String] username
-    # @param [String] password
-    # @param [String] nonce
-    #
-    # @return [String] a key for db authentication.
-    def auth_key(username, password, nonce)
-      Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
-    end
 
     # Return a hashed password for auth.
     #
@@ -41,7 +31,7 @@ module EM::Mongo
     #
     # @return [String]
     def hash_password(username, plaintext)
-      Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
+      OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
     end
 
 
