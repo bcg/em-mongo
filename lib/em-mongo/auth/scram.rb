@@ -29,10 +29,6 @@ module EM::Mongo
       VERIFIER = /v=([^,]*)/.freeze
       PAYLOAD = 'payload'.freeze
 
-      def initialize(database)
-        @db = database
-      end
-      
       # @param [String] username
       # @param [String] password
       #
@@ -95,7 +91,7 @@ module EM::Mongo
               client_final = BSON::Binary.new ( client_final_wo_proof + ",p=#{proof}")
               client_final_msg = CLIENT_FINAL_MESSAGE.merge({PAYLOAD => client_final, conversationId: conv_id})
 
-              client_final_resp = @db.collection('$cmd').first(client_final_msg)
+              client_final_resp = @db.collection(SYSTEM_COMMAND_COLLECTION).first(client_final_msg)
               client_final_resp.callback do |res_final|
                 if not is_server_response_valid? res_final
                   response.fail "Final Server Response not valid " + res_final.to_s
@@ -129,7 +125,7 @@ module EM::Mongo
     def handle_server_end(response,conv_id) # will set the response
       client_end = BSON::Binary.new('')
       client_end_msg = CLIENT_EMPTY_MESSAGE.merge(PAYLOAD=>client_end, conversationId:conv_id)
-      server_end_resp = @db.collection('$cmd').first(client_end_msg)
+      server_end_resp = @db.collection(SYSTEM_COMMAND_COLLECTION).first(client_end_msg)
       
       server_end_resp.errback{|err| response.fail err}
       

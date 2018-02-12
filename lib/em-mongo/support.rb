@@ -23,16 +23,6 @@ module EM::Mongo
     include EM::Mongo::Conversions
     extend self
 
-    # Generate an MD5 for authentication.
-    #
-    # @param [String] username
-    # @param [String] password
-    # @param [String] nonce
-    #
-    # @return [String] a key for db authentication.
-    def auth_key(username, password, nonce)
-      OpenSSL::Digest::MD5.hexdigest("#{nonce}#{username}#{hash_password(username, password)}")
-    end
 
     # Return a hashed password for auth.
     #
@@ -43,6 +33,7 @@ module EM::Mongo
     def hash_password(username, plaintext)
       OpenSSL::Digest::MD5.hexdigest("#{username}:mongo:#{plaintext}")
     end
+
 
     def validate_db_name(db_name)
       unless [String, Symbol].include?(db_name.class)
@@ -60,10 +51,8 @@ module EM::Mongo
 
     def format_order_clause(order)
       case order
-        when String, Symbol then
-          string_as_sort_parameters(order)
-        when Array then
-          array_as_sort_parameters(order)
+        when String, Symbol then string_as_sort_parameters(order)
+        when Array then array_as_sort_parameters(order)
         else
           raise InvalidSortValueError, "Illegal sort clause, '#{order.class.name}'; must be of the form " +
             "[['field1', '(ascending|descending)'], ['field2', '(ascending|descending)']]"
