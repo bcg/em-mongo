@@ -4,3 +4,5 @@ Gemfile.lock
 vendor
 .rvmrc
 .ruby-version
+.idea
+*~
