@@ -395,6 +395,19 @@ describe EMMongo::Collection do
 
   end
 
+  describe "aggregate" do
+    it "should aggregate" do
+      @coll << { :a => 1, :b => 1 }
+      @coll << { :a => 2, :b => 1 }
+      @coll << { :a => 3, :b => 1 }
+
+      resp = @coll.aggregate([{'$project' => {:a => 1}}, {'$group' => {:_id => :counts, :counts => {'$sum' => 1} }}])
+      resp.callback do |doc|
+        doc[0]["counts"].should == 3
+      end
+    end
+  end
+
   describe "mapreduce" do
     it "should map, and then reduce" do
       @conn, @coll = connection_and_collection
