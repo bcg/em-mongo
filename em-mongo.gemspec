@@ -1,8 +1,8 @@
-version = File.read("VERSION").strip
+require_relative 'lib/em-mongo/version.rb' #for version
 
 Gem::Specification.new do |s|
   s.name    = 'em-mongo'
-  s.version = version
+  s.version = EventMachine::Mongo::VERSION
 
   s.authors = ['bcg', 'PlasticLizard']
   s.email   = 'brenden.grace@gmail.com'
