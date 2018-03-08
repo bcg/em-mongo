@@ -1,4 +1,6 @@
-require_relative 'lib/em-mongo/version.rb' #for version
+lib = File.expand_path('../lib', __FILE__)
+$LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
+require 'em-mongo/version.rb' #for version
 
 Gem::Specification.new do |s|
   s.name    = 'em-mongo'
@@ -23,6 +25,6 @@ Gem::Specification.new do |s|
 
   s.summary = 'An EventMachine driver for MongoDB.'
 
-  s.add_dependency 'eventmachine', ['<= 2.0']
-  s.add_dependency  'bson', ['<= 2.0']
+  s.add_dependency 'eventmachine', ['>=0.12.10', '< 2.0']
+  s.add_dependency 'bson',         ['>=1.9.2'  , '< 2.0']
 end
