@@ -62,7 +62,7 @@ module EM::Mongo
             # take the salt & iterations and do the pw-derivation
             server_first = res_first[PAYLOAD].to_s
 
-            conv_id = res_first['conversationId']
+            @conversation_id=conv_id = res_first['conversationId']
 
             combined_nonce = server_first.match(RNONCE)[1] #r= ...
             salt       =     server_first.match( SALT )[1] #s=... (from server_first)
@@ -158,7 +158,7 @@ module EM::Mongo
       end
       
       if not Support.ok? response then return false; end
-      if not @conversationId.nil? and response['conversationId'] != @conversationId
+      if not @conversation_id.nil? and response['conversationId'] != @conversation_id
         return false;
       end
       

@@ -5,18 +5,14 @@ rescue LoadError
   require "bson"
 end
 
-module EM::Mongo
 
-  module Version
-    STRING = File.read(File.dirname(__FILE__) + '/../VERSION')
-    MAJOR, MINOR, TINY = STRING.split('.')
-  end
+module EM::Mongo
 
   NAME    = 'em-mongo'
   LIBPATH = ::File.expand_path(::File.dirname(__FILE__)) + ::File::SEPARATOR
   PATH    = ::File.dirname(LIBPATH) + ::File::SEPARATOR
 end
-
+require File.join(EM::Mongo::LIBPATH, "em-mongo/version")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/conversions")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/support")
 require File.join(EM::Mongo::LIBPATH, "em-mongo/database")

@@ -1,8 +1,8 @@
-version = File.read("VERSION").strip
+require_relative 'lib/em-mongo/version.rb' #for version
 
 Gem::Specification.new do |s|
   s.name    = 'em-mongo'
-  s.version = version
+  s.version = EventMachine::Mongo::VERSION
 
   s.authors = ['bcg', 'PlasticLizard']
   s.email   = 'brenden.grace@gmail.com'
@@ -23,6 +23,6 @@ Gem::Specification.new do |s|
 
   s.summary = 'An EventMachine driver for MongoDB.'
 
-  s.add_dependency 'eventmachine', ['>= 0.12.10']
-  s.add_dependency  'bson', ['~> 1.9.2']
+  s.add_dependency 'eventmachine', ['<= 2.0']
+  s.add_dependency  'bson', ['<= 2.0']
 end

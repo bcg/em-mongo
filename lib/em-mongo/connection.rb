@@ -27,7 +27,6 @@ module EM::Mongo
   SPHERE2D   = '2dsphere'
   GEO2D      = '2d'
 
-  DEFAULT_MAX_BSON_SIZE = 4 * 1024 * 1024
 
   class EMConnection < EM::Connection
     MAX_RETRIES = 5
