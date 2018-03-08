@@ -34,6 +34,18 @@ describe EMMongo::Database do
     end
   end
 
+  it "should create a collection with options" do
+    @conn = EM::Mongo::Connection.new
+    @db = @conn.db
+    @db.create_collection('capped', {:capped => true, :max => 10}).callback do |col|
+      @db.command({:collstats => 'capped'}).callback do |doc|
+        doc['capped'].should == 1
+        doc['max'].should == 10
+        done
+      end
+    end
+  end
+
   it "should drop a collection" do
     @conn = EM::Mongo::Connection.new
     @db = @conn.db
