@@ -12,7 +12,9 @@ module EM::Mongo
       auth_resp = @db.collection(SYSTEM_COMMAND_COLLECTION).first({'getnonce' => 1})
       auth_resp.callback do |res|
         if not res or not res['nonce']
-          response.succeed false
+          if res.nil? then response.fail "connection failure"
+          else response.fail "invalid first server response: " + res.to_s
+          end
         else
           auth                 = BSON::OrderedHash.new
           auth['authenticate'] = 1

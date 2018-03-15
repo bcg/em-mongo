@@ -1,6 +1,5 @@
 
-    Em-mongo is no longer being maintained (hasn't been for some time). If you are interested in the commit bit
-    or want to take over the full project, please let me know!
+    Em-mongo needs collaborators to help maintaining this project. If you are interested, please let me know!
 
 = EM-Mongo
 
@@ -121,6 +120,22 @@ em-mongo has the following safe methods:
 In addition to calling your errback if the write fails, you can provide the usual 'safety' options that you can to Database#get_last_error, such as :fsync => true or :w => 2, to control the degree of safety you want. Please the 10gen documentation on DB#get_last_error for specifics.
 
   safe_insert( {:a=>"v"}, :last_error_params => { :fsync => true, :w => 5 } )
+
+
+== Authentication
+At the moment the mechhanisms SCRAM-SHA-1(:scram_sha1) and MONGODB-CR(:mongodb_cr) are supported.
+It works as follows:
+
+    # establish connection and get authentication db
+    connection = EM::Mongo::Connection.new(db_server, port)
+    auth_db = connection.db(db_name)
+    
+    # authentication itself
+    resp = auth_db.authenticate(user,password, :scram_sha1)
+    resp.callback do |success| 
+      do_authenticated #auth successful
+    end
+    resp.errback {|err| auth_failure err} # authentication failed
 
 == Documentation
 
