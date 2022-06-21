@@ -1,3 +1,8 @@
+- UNRELEASED
+
+ * Correctly propagate errors in EM::Mongo::Cursor#next_document
+
+
 - 0.6.0
 
  * add SCRAM-SHA-1 authentication mechanism

@@ -86,9 +86,11 @@ module EM::Mongo
     def next_document
       response = RequestResponse.new
       if @cache.length == 0
-        refresh.callback do
+        ref_resp = refresh
+        ref_resp.callback do
           check_and_transform_document(@cache.shift, response)
         end
+        ref_resp.errback { |err| response.fail err }
       else
         check_and_transform_document(@cache.shift, response)
       end
