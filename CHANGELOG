@@ -1,7 +1,6 @@
-- UNRELEASED
+- 0.6.1
 
  * Correctly propagate errors in EM::Mongo::Cursor#next_document
-
 
 - 0.6.0
 
